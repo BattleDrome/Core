@@ -1,0 +1,43 @@
+<div class="card-container">
+    <div class="card">
+        <div class="front">
+            <div class="card-header">
+                <span class='card-lc badge-status'>
+                    <span id="status_statetypestring" class="badge badge-secondary">
+                        <span id="data_statestring"></span>
+                    </span>
+                </span>
+                <span id="data_name">Warrior Name</span>
+                <span class='badge badge-light'>Lvl:
+                    <span id="data_level">0</span>
+                </span>
+                <img class='flip-icon' src="images/flip.png" onClick="BD.flipCard('{{DIVID}}');">
+            </div>
+            <canvas width="240" height="350" id="trainer-image-{{ELEMENTID}}" class="warrior-image card-img-top"></canvas>
+            <div class="card-body">
+                <div class="warrior-attribute">
+                    Teaching Fee:
+                    <span id='data_teachingfee'></span> Finney
+                </div>
+            </div>
+            <div class="card-footer">
+                    <div class="warrior-attribute">
+                            <span id='data_dominantstat'></span> Trainer Level: <span id='data_dominantstatvalue'></span>
+                        </div>
+                    </div>
+        </div>
+        <div class="back">
+            <div class="card-header">
+                Trainer: 
+                <span id="data_name">Warrior Name</span> Lvl:
+                <span id="data_level">0</span>
+                <img class='flip-icon' src="images/flip.png" onClick="BD.flipCard('{{DIVID}}');">
+            </div>
+            <div class="card-body">
+                <div class="warrior-action">
+                    <button class="btn btn-primary action-button" onClick="BD.warriorTrainWith({{ELEMENTID}});">Train With This Warrior</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

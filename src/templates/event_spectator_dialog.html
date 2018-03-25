@@ -1,0 +1,27 @@
+<div class="modal fade" id="modalSpectateEvent" tabindex="-1" role="dialog" aria-labelledby="modalSpectateEventTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalSpectateEventTitle">Spectating Event</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="card spectate-left">
+                    <div class="card-header">
+                        Event Combat Log
+                    </div>
+                    <div id="event_combatlog" class="card-body">
+                        Combat Log
+                    </div>
+                </div>
+                <div class="card spectate-right">
+                    <div class="card-body">
+                            <button class="btn btn-primary action-button" onClick="BD.pollCurrentEvent();">Poll Event!</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

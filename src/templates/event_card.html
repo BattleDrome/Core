@@ -1,0 +1,63 @@
+<div class="eventcard-container">
+    <div class="card">
+        <div class="card-header">
+            <span class='card-lc badge-status'>
+                <span id="status_statetypestring" class="badge badge-secondary">
+                    <span id="data_statestring"></span>
+                </span>
+            </span>
+            <span id="data_name">Event {{ELEMENTID}}</span>
+            <span class='card-rc'>Join Fee:
+                <span id='data_joinfee'>0</span> Finney</span>
+        </div>
+        <div class="card-body">
+            <div class='row'>
+                <div class="warrior-attribute col-sm">
+                    Event Owner:
+                    <span id='data_owner'>X</span>
+                </div>
+            </div>
+            <div class='row'>
+                <div class="warrior-attribute col-sm">
+                    <span id='data_canstartstring'>X</span>
+                </div>
+                <div class="warrior-attribute col-sm">
+                    Battle Size (Min:
+                    <span id='data_minwarriors'>0</span> Max:
+                    <span id='data_maxwarriors'>0</span> Current:
+                    <span id='data_participantcount'>0</span>)
+                </div>
+            </div>
+            <div class='row'>
+                <div class="warrior-attribute col-sm">
+                    Current Crew Pool:
+                    <span id='data_crewpool'>0</span> Finney
+                </div>
+                <div class="warrior-attribute col-sm">
+                    Current Prize Pool:
+                    <span id='data_prizepool'>0</span> Finney
+                </div>
+            </div>
+            <div class='row'>
+                <div class="warrior-attribute col-sm">
+                    Level Range (Min:
+                    <span id='data_minlevel'>0</span> Max:
+                    <span id='data_maxlevel'>0</span>)
+                </div>
+                <div class="warrior-attribute col-sm">
+                    Equipment Range (Min:
+                    <span id='data_minequiplevel'>0</span> Max:
+                    <span id='data_maxequiplevel'>0</span>)
+                </div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <div class="warrior-action">
+                <button id="joinbutton-{{ELEMENTID}}" class="btn btn-primary action-button" onClick="BD.joinEvent({{ELEMENTID}});">Join Event</button>
+                <button id="startbutton-{{ELEMENTID}}" class="btn btn-primary action-button" onClick="BD.startEvent({{ELEMENTID}});">Start Event</button>
+                <button id="cancelbutton-{{ELEMENTID}}" class="btn btn-primary action-button" onClick="BD.cancelEvent({{ELEMENTID}});">Cancel Event</button>
+                <button id="watchbutton-{{ELEMENTID}}" class="btn btn-primary action-button" onClick="BD.watchEvent({{ELEMENTID}});"><span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>Watch Event</button>
+            </div>
+        </div>
+    </div>
+</div>

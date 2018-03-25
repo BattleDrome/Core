@@ -1,0 +1,26 @@
+<div class="modal fade" id="modalWarriorTeach" tabindex="-1" role="dialog" aria-labelledby="modalWarriorTeachTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <form>
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalWarriorTeachTitle">Begin Teaching</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" class="form-control" id="wt_id" value="">                        
+                        <div class="form-group">
+                            <label for="wt_fee">Teaching Fee</label>
+                            <input type="text" class="form-control" id="wt_fee" aria-describedby="feeHelp" placeholder="Teaching Fee in Finney">
+                            <small id="feeHelp" class="form-text text-muted">Enter the fee others must pay to train with your warrior (in Finney)</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" data-dismiss="modal" onClick="BD.doWarriorStartTeaching();">Begin Teaching!</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
