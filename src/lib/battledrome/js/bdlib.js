@@ -81,25 +81,29 @@ BDLib = {
         BDLib.setupCombatLogWatch();
     },
 
-    createWarrior: async (warriorName, colorHue, armorType, shieldType, weaponType) => {
-        var name = warriorName;
+    createWarrior: async (colorHue, armorType, shieldType, weaponType) => {
         var wc = await BDLib.contracts['WarriorCore'].deployed();
-        console.log("Creating New Warrior: " + name);
+        console.log("Creating New Warrior");
         var warriorCost = await wc.getWarriorCost.call()
-        var theNotify = BD.showCreateNotify(name);
+        var theNotify = BD.showCreateNotify("NewWarrior");
         var warriorEvent = wc.WarriorCreated({ creator: BDLib.getAccount() });
         warriorEvent.watch(async (error, event) => {
             if (!error) {
-                var warriorNameCheck = await wc.getName(event.args.warrior);
-                console.log("WarriorCreated Event For:" + warriorNameCheck);
-                //TODO: Make this check better... Need to align somehow to Bytes32 truncation?
-                if (warriorName.substring(0, 16) == warriorNameCheck.substring(0, 16)) BD.notifySucceed(theNotify);
+                console.log("WarriorCreated Event");
+                //TODO Constrain this better now that name isn't checkable?
+                BD.notifySucceed(theNotify);
                 BD.forceRefresh();
             } else {
                 console.log("WARRIOR CREATION ERROR: " + error);
             }
         });
-        var txResult = await wc.newWarrior(name, BDLib.getAccount(), colorHue, armorType, shieldType, weaponType, { value: warriorCost });
+        console.log("Firing TX");
+        console.log(BDLib.getAccount());
+        console.log(colorHue);
+        console.log(armorType);
+        console.log(shieldType);
+        console.log(weaponType);
+        var txResult = await wc.newWarrior(BDLib.getAccount(), colorHue, armorType, shieldType, weaponType, { value: warriorCost });
         console.log(txResult);
         return txResult;
     },
@@ -126,6 +130,11 @@ BDLib = {
         var txResult = await ec.newEvent(warriorMin, warriorMax, minLevel, maxLevel, minEquipLevel, maxEquipLevel, maxPolls, joinFeeFinney, { value: eventCost });
         //console.log(txResult);
         return txResult;
+    },
+
+    setWarriorName: async (warriorId, name) => {
+        var wc = await BDLib.contracts['WarriorCore'].deployed();
+        await wc.setName(warriorId,name);
     },
 
     getWarriorName: async (warriorId) => {
@@ -220,6 +229,7 @@ BDLib = {
             'color': (await wc.getColorHue.call(warriorId)).valueOf(),
             'gender': (await wc.getCosmeticProperty.call(warriorId, 0)).valueOf(),
         };
+        if(warriorData.name.length<=0) warriorData.name = "UNNAMED";
         warriorData = await BDLib.buildWarriorCosmetics(wc, warriorId, warriorData);
         warriorData = await BDLib.buildWarriorEnumStrings(warriorData);
         warriorData = await BDLib.calculateWarriorDominantStat(warriorData);

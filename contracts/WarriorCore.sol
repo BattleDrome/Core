@@ -165,17 +165,13 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
     // Warrior Constructor
     //////////////////////////////////////////////////////////////////////////////////////////
 
-	function newWarrior(string _name, address warriorOwner, uint16 colorHue, uint8 armorType, uint8 shieldType, uint8 weaponType) public payable costs(warriorCost) returns(uint theNewWarrior) {
-		//Check if the name is unique
-		require(!nameExists(_name));
+	function newWarrior(address warriorOwner, uint16 colorHue, uint8 armorType, uint8 shieldType, uint8 weaponType) public payable costs(warriorCost) returns(uint theNewWarrior) {
         //Generate a new random seed for the warrior
         uint randomSeed = getRandom();
 		//Generate a new warrior, and add it to the warriors array
-		warriors.push(LibWarrior.newWarrior(_name,warriorOwner,randomSeed,colorHue,LibWarrior.ArmorType(armorType),LibWarrior.ShieldType(shieldType),LibWarrior.WeaponType(weaponType)));
+		warriors.push(LibWarrior.newWarrior(warriorOwner,randomSeed,colorHue,LibWarrior.ArmorType(armorType),LibWarrior.ShieldType(shieldType),LibWarrior.WeaponType(weaponType)));
 		//Add the warrior to the appropriate owner index
 		addWarrior(warriorOwner,warriors.length-1);
-        //Add warrior's name to index
-        warriorNames[_name] = true;
 		//Pay the warrior the fee
 		LibWarrior.payWarriorInternal(warriors[warriors.length-1],warriorCost,false);
         //Fire the event
@@ -455,6 +451,15 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
     //////////////////////////////////////////////////////////////////////////////////////////
     // Setters
     //////////////////////////////////////////////////////////////////////////////////////////
+
+    function setName(uint warriorID, string name) public onlyWarriorOwner(warriorID) {
+		//Check if the name is unique
+		require(!nameExists(name));
+        //Set the name
+        LibWarrior.setName(warriors[warriorID],name);
+        //Add warrior's name to index
+        warriorNames[name] = true;
+    }
 
     function setEventCore(address core) public onlyOwner {
         eventCore = EventCore(core);

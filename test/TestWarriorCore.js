@@ -33,7 +33,7 @@ contract('WarriorCore', function(accounts) {
 
     it("Should allow Creation of a new Warrior (with reasonable gas cost)", async () => {
         var warriorFee = await coreInstance.getWarriorCost.call();
-        var txResult = await coreInstance.newWarrior("Bob",web3.eth.accounts[0],0,0,0,0,{value:warriorFee});
+        var txResult = await coreInstance.newWarrior(web3.eth.accounts[0],0,0,0,0,{value:warriorFee});
         var eventFound = false;
         var warriorID = 0;
         var warriorCount = 0;
@@ -55,8 +55,8 @@ contract('WarriorCore', function(accounts) {
 
     it("Should allow Creation of Multiple Warriors", async () => {
         var warriorFee = await coreInstance.getWarriorCost.call();
-        var txResultA = await coreInstance.newWarrior("Joe",web3.eth.accounts[0],0,0,0,0,{value:warriorFee});
-        var txResultB = await coreInstance.newWarrior("Dave",web3.eth.accounts[0],0,0,0,0,{value:warriorFee});
+        var txResultA = await coreInstance.newWarrior(web3.eth.accounts[0],0,0,0,0,{value:warriorFee});
+        var txResultB = await coreInstance.newWarrior(web3.eth.accounts[0],0,0,0,0,{value:warriorFee});
         var eventFoundA = false;
         var eventFoundB = false;
         var warriorCount = 0;
@@ -78,9 +78,25 @@ contract('WarriorCore', function(accounts) {
         assert.isAbove(warriorCount, 2, "The WarriorCount does not reflect the new warriors!");
     });
 
-    it("Should have the correct name", async () => {
+    it("Should start with no name", async () => {
         var name = await coreInstance.getName.call(0);
-        assert.equal(name,"Bob","Warrior didn't have the correct name!");
+        assert.equal(name,"","Warrior didn't have a blank name!");
+        var name = await coreInstance.getName.call(1);
+        assert.equal(name,"","Warrior didn't have a blank name!");
+        var name = await coreInstance.getName.call(2);
+        assert.equal(name,"","Warrior didn't have a blank name!");
+    });
+
+    it("Should allow naming new warriors", async () => {
+        await coreInstance.setName(0,"Bob");
+        await coreInstance.setName(1,"Joe");
+        await coreInstance.setName(2,"Dave");
+        var bobName = await coreInstance.getName.call(0);
+        var joeName = await coreInstance.getName.call(1);
+        var daveName = await coreInstance.getName.call(2);
+        assert.equal(bobName,"Bob","Warrior didn't have the correct name!");
+        assert.equal(joeName,"Joe","Warrior didn't have the correct name!");
+        assert.equal(daveName,"Dave","Warrior didn't have the correct name!");
     });
 
     it("Should start at level zero", async () => {

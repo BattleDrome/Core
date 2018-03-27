@@ -163,9 +163,9 @@ library LibWarrior {
     // Warrior Constructor
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    function newWarrior(string _name, address warriorOwner, uint randomSeed, uint16 colorHue, ArmorType armorType, ShieldType shieldType, WeaponType weaponType) internal view returns (warrior) {
+    function newWarrior(address warriorOwner, uint randomSeed, uint16 colorHue, ArmorType armorType, ShieldType shieldType, WeaponType weaponType) internal view returns (warrior) {
         warrior memory theWarrior = warrior(
-			stringToBytes32(_name),	//bytesName
+			bytes32(0),	            //bytesName Empty to start
 			warriorOwner,			//owner
 			0,						//balance
             0,                      //teachingFee
@@ -311,7 +311,7 @@ library LibWarrior {
     function getWeaponMod(warrior storage w) internal view returns(int con, int str, int dex) {
         if(getWeaponClass(w)==WeaponClass.Slashing) {
             con=0;
-            dex=0;
+            dex=1;
             str=0;
         } 
         if(getWeaponClass(w)==WeaponClass.Cleaving) {
@@ -512,6 +512,11 @@ library LibWarrior {
     //////////////////////////////////////////////////////////////////////////////////////////
     // Setters
     //////////////////////////////////////////////////////////////////////////////////////////
+
+    function setName(warrior storage w, string name) internal {
+        require(w.bytesName==bytes32(0));
+        w.bytesName = stringToBytes32(name);
+    }
 
     function setOwner(warrior storage w, address newOwner) internal {
         w.owner = newOwner;

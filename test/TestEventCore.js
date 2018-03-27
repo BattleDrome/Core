@@ -103,7 +103,7 @@ contract('EventCore', function(accounts) {
     it("Should Allow New Warrior to Join", async () => {
         wCoreInstance = await WarriorCore.deployed();
         var warriorFee = await wCoreInstance.getWarriorCost.call();
-        var txResult = await wCoreInstance.newWarrior("Bob",web3.eth.accounts[0],0,0,0,0,{value:warriorFee});
+        var txResult = await wCoreInstance.newWarrior(web3.eth.accounts[0],0,0,0,0,{value:warriorFee});
         var eventFound = false;
         var warriorID = 0;
         var warriorCount = 0;
@@ -116,6 +116,7 @@ contract('EventCore', function(accounts) {
                 warriorCount = await wCoreInstance.getGlobalWarriorCount.call();
             }
         }
+        await wCoreInstance.setName(warriorID,"Bob");
         assert.isTrue(eventFound,"The Warrior Created Event was Not Emitted!");
         var warriorBalance = await wCoreInstance.getBalance.call(warriorID);
         var joinFee = await coreInstance.getJoinFee.call(0);
@@ -127,7 +128,7 @@ contract('EventCore', function(accounts) {
 
     it("Should Allow A Second Warrior to Join", async () => {
         var warriorFee = await wCoreInstance.getWarriorCost.call();
-        var txResult = await wCoreInstance.newWarrior("Joey",web3.eth.accounts[0],0,0,0,0,{value:warriorFee});
+        var txResult = await wCoreInstance.newWarrior(web3.eth.accounts[0],0,0,0,0,{value:warriorFee});
         var eventFound = false;
         var warriorID = 0;
         var warriorCount = 0;
@@ -140,6 +141,7 @@ contract('EventCore', function(accounts) {
                 warriorCount = await wCoreInstance.getGlobalWarriorCount.call();
             }
         }
+        await wCoreInstance.setName(warriorID,"Joey");        
         assert.isTrue(eventFound,"The Warrior Created Event was Not Emitted!");
         var warriorBalance = await wCoreInstance.getBalance.call(warriorID);
         var joinFee = await coreInstance.getJoinFee.call(0);
@@ -151,7 +153,7 @@ contract('EventCore', function(accounts) {
 
     it("Should Allow A Third Warrior to Join", async () => {
         var warriorFee = await wCoreInstance.getWarriorCost.call();
-        var txResult = await wCoreInstance.newWarrior("Jimmy",web3.eth.accounts[0],0,0,0,0,{value:warriorFee});
+        var txResult = await wCoreInstance.newWarrior(web3.eth.accounts[0],0,0,0,0,{value:warriorFee});
         var eventFound = false;
         var warriorID = 0;
         var warriorCount = 0;
@@ -164,6 +166,7 @@ contract('EventCore', function(accounts) {
                 warriorCount = await wCoreInstance.getGlobalWarriorCount.call();
             }
         }
+        await wCoreInstance.setName(warriorID,"Jimmy");                
         assert.isTrue(eventFound,"The Warrior Created Event was Not Emitted!");
         var warriorBalance = await wCoreInstance.getBalance.call(warriorID);
         var joinFee = await coreInstance.getJoinFee.call(0);
@@ -175,7 +178,7 @@ contract('EventCore', function(accounts) {
 
     it("Should Allow A Fourth Warrior to Join", async () => {
         var warriorFee = await wCoreInstance.getWarriorCost.call();
-        var txResult = await wCoreInstance.newWarrior("Steve",web3.eth.accounts[0],0,0,0,0,{value:warriorFee});
+        var txResult = await wCoreInstance.newWarrior(web3.eth.accounts[0],0,0,0,0,{value:warriorFee});
         var eventFound = false;
         var warriorID = 0;
         var warriorCount = 0;
@@ -188,6 +191,7 @@ contract('EventCore', function(accounts) {
                 warriorCount = await wCoreInstance.getGlobalWarriorCount.call();
             }
         }
+        await wCoreInstance.setName(warriorID,"Steve");        
         assert.isTrue(eventFound,"The Warrior Created Event was Not Emitted!");
         var warriorBalance = await wCoreInstance.getBalance.call(warriorID);
         var joinFee = await coreInstance.getJoinFee.call(0);

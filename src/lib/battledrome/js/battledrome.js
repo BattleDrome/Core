@@ -92,6 +92,7 @@ BD = {
         BD.loadDialog("warrior_create_dialog");
         BD.loadDialog("warrior_teach_dialog");
         BD.loadDialog("warrior_sell_dialog");
+        BD.loadDialog("warrior_name_dialog");
         BD.loadDialog("event_create_dialog");
         BD.loadDialog("event_join_dialog");
         BD.loadDialog("event_spectator_dialog");
@@ -255,7 +256,7 @@ BD = {
         var weaponType = $('#cw_weaponType').val();
         var armorType = $('#cw_armorType').val();
         var shieldType = $('#cw_shieldType').val();
-        BDLib.createWarrior(warriorName, colorHue, armorType, shieldType, weaponType);
+        BDLib.createWarrior(colorHue, armorType, shieldType, weaponType);
     },
 
     createEvent: function () {
@@ -273,6 +274,21 @@ BD = {
             console.log("Could Not Create Event");
             alert("You are not currently able to create an event!\r\nYou may not be able to afford it, your parameters may be incorrect, or you may already have an active (unfinished) event!");
         }
+    },
+
+    nameWarrior: async (warriorId) => {
+        if((await BDLib.getWarriorState(warriorId))==0){
+            $("#modalWarriorName").modal();
+            $("#wn_id").val(warriorId);
+        }else{
+            alert("The Warrior is Busy, can't currently be Named!");
+        }        
+    },
+
+    doNameWarrior: async () => {
+        var warriorId = $("#wn_id").val();
+        var name = $("#wn_name").val();
+        BDLib.setWarriorName(warriorId,name);
     },
 
     buyStat: function (warriorIndex, stat) {
