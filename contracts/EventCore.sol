@@ -7,7 +7,7 @@ import "./LibWarrior.sol";
 contract EventCore is controlled,mortal,priced,hasRNG {
     uint constant minNewTime = 1 hours;
     uint constant minTimeBeforeCancel = 1 hours;
-	uint constant minActiveTime = 1 hours;
+	uint constant idleTimeBeforeCancel = 24 hours;
 	uint constant basePollCost = 10 finney;
 	uint32 constant minPollDuration = 30 seconds;
 
@@ -345,8 +345,11 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 	}
 
 	function canParticipate(uint eventID, uint newWarrior) public view returns(bool) {
-		return (warriorCore.getState(newWarrior)==LibWarrior.warriorState.Idle) 
-			&& canAddParticipant(eventID, warriorCore.getLevel(newWarrior));
+		return (
+			(warriorCore.getState(newWarrior)==LibWarrior.warriorState.Idle)
+			&& canAddParticipant(eventID, warriorCore.getLevel(newWarrior))
+			&& (warriorCore.getEquipLevel(newWarrior)>=getMinEquipLevel(eventID))
+		);
 	}
 
 	function checkParticipation(uint eventID, uint theWarrior) public view returns(bool) {
@@ -362,9 +365,15 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 
 	function canCancel(uint eventID) public view returns(bool) {
 		return (
-			now - events[eventID].timeOpen > minTimeBeforeCancel && 
-			events[eventID].participants.length < events[eventID].warriorMin &&
-			events[eventID].state == EventState.New
+			(
+				msg.sender == getOwner(eventID) &&
+				now - events[eventID].timeOpen > minTimeBeforeCancel && 
+				events[eventID].participants.length < events[eventID].warriorMin &&
+				events[eventID].state == EventState.New
+			) || (
+				events[eventID].state == EventState.Active &&
+				getTimeSinceLastPoll(eventID) > idleTimeBeforeCancel
+			)
 		);
 	}	
 
@@ -414,7 +423,7 @@ contract EventCore is controlled,mortal,priced,hasRNG {
         EventStarted(uint32(eventID),uint32(now));
     }
 
-    function cancel(uint eventID) public onlyEventOwner(eventID) onlyEventState(eventID,EventState.New) {
+    function cancel(uint eventID) public {
         require(canCancel(eventID));
         events[eventID].state = EventState.Finished;
         setFinishTime(eventID,uint32(now));
@@ -474,10 +483,20 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 		unclaimedPool += amount;
 	}
 
+	function getTimeSinceLastPoll(uint eventID) public view returns (uint) {
+		if(getState(eventID)==EventState.New){
+			return now - events[eventID].timeOpen;
+		}else if(getPollCount(eventID)>0){
+			return now - events[eventID].lastPollTime;
+		}else{
+			return now - events[eventID].timeStart;
+		}
+	}
+
 	function canPoll(uint eventID) public view returns (bool) {
 		//Can't poll if either event in wrong state, or if you were the last poller.
 		//Also can't poll more than once per `minPollDuration`
-		return events[eventID].state == EventState.Active && getLastPoll(eventID) != msg.sender && now > events[eventID].lastPollTime + minPollDuration;
+		return events[eventID].state == EventState.Active && getLastPoll(eventID) != msg.sender && getTimeSinceLastPoll(eventID) >= minPollDuration;
 	}
 
 	function poll(uint eventID) public {

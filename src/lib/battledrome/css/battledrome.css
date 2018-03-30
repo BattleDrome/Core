@@ -91,12 +91,17 @@
   height: 95vh;
 }
 
+.back .card-body {
+  padding: 5px;
+}
+
 .card .tab-pane {
   height: 100%;
 }
 
 .card .tab-content {
-  height: 100%;
+  height: 400px;
+  background-color: #303030;
 }
 
 .pre-scrollable {
@@ -130,7 +135,8 @@
 }
 
 .card .front, .back {
-  width: 100%;
+  width: 280px;
+  height: 456px;
   color: white;
   text-align: center;
   position: absolute;
@@ -138,9 +144,6 @@
   -moz-backface-visibility: hidden;
   -o-backface-visibility: hidden;
   backface-visibility: hidden;
-}
-
-.card .front {
   overflow: hidden;
 }
 
@@ -183,6 +186,10 @@
   font-size: 14px;
 }
 
+.card .badge-small {
+  font-size: 0.55em;
+}
+
 #join_warrior_selector button {
   margin-left: 5px;
   margin-right: 5px;
@@ -222,3 +229,12 @@
   margin: 10px;
   text-shadow: 2px 2px 1px black;
 }
+
+.card-body .row-spacer {
+  width: 100%;
+  height: 2px;
+  background-color: #202020;
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+

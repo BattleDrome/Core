@@ -445,6 +445,18 @@ library LibWarrior {
         return random(w.cosmeticSeed,propertyIndex);
     }
 
+    function getEquipLevel(warrior storage w) internal view returns (uint) {
+        if(w.weaponStrength>w.armorStrength && w.weaponStrength>w.shieldStrength){
+            return w.weaponStrength;
+        }else{
+            if(w.armorStrength>w.shieldStrength){
+                return w.armorStrength;
+            }else{
+                return w.shieldStrength;
+            }
+        }
+    }
+
     //////////////////////////////////////////////////////////////////////////////////////////
     // Costing Getters
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -547,6 +559,7 @@ library LibWarrior {
     }
 
     function buyStats(warrior storage w, uint8 strAmount, uint8 dexAmount, uint8 conAmount, uint8 luckAmount) internal {
+        require(strAmount>0 || dexAmount>0 || conAmount>0 || luckAmount>0); //Require buying at least something, otherwise you are wasting gas!
         buyStrInternal(w,strAmount);
         buyDexInternal(w,dexAmount);
         buyConInternal(w,conAmount);

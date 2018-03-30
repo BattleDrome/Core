@@ -277,11 +277,15 @@ BDLib = {
     buildEventDerivedValues: async (eventData) => {
         eventData['crewpool'] = eventData['balance'] / 2;
         eventData['prizepool'] = eventData['balance'] / 2;
-        eventData['canstartinhours'] = ((parseInt(eventData['timestart']) + parseInt(eventData['newduration'])) - Date.now()) / (60 * 60);
+        eventData['canstartinhours'] = ((parseInt(eventData['timeopen']) + parseInt(eventData['newduration'])) - Date.now()) / (60 * 60);
         if (eventData['canstartinhours'] >= 0) {
             eventData['canstartstring'] = "Can Start In (approximately): " + Math.abs(eventData['canstartinhours']) + " Hours";
         } else {
-            eventData['canstartstring'] = "Can Start Now!";
+            if(eventData['participantcount']>=eventData['minwarriors']){
+                eventData['canstartstring'] = "Can Start Now!";
+            }else{
+                eventData['canstartstring'] = "Not Enough Participants Yet!";
+            }
         }
         return eventData;
     },
@@ -437,6 +441,16 @@ BDLib = {
         return warriors;
     },
 
+    payWarrior: async (warriorId,amount) => {
+        var wc = await BDLib.contracts['WarriorCore'].deployed();
+        var theNotify = BD.showPurchaseNotify();
+        var weiAmount = web3.toWei(parseFloat(amount),"finney");
+        console.log("Paying Warrior:"+weiAmount);
+        var txResult = await wc.payWarrior(warriorId,{value:weiAmount});
+        BD.forceRefresh();
+        BD.notifySucceed(theNotify);
+    },
+
     getStatCost: async (warriorId, strBuyVal, dexBuyVal, conBuyVal, luckBuyVal) => {
         var wc = await BDLib.contracts['WarriorCore'].deployed();
         var statCost = (await wc.getStatsCost.call(warriorId, strBuyVal, dexBuyVal, conBuyVal, luckBuyVal)).valueOf();
@@ -477,6 +491,12 @@ BDLib = {
         var ec = await BDLib.contracts['EventCore'].deployed();
         var canStart = await ec.canStart.call(eventId);
         return canStart;
+    },
+
+    canCancelEvent: async (eventId) => {
+        var ec = await BDLib.contracts['EventCore'].deployed();
+        var canCancel = await ec.canCancel.call(eventId);
+        return canCancel;
     },
 
     canCreateEvent: async (warriorMax) => {
@@ -526,9 +546,28 @@ BDLib = {
         return txResult;
     },
 
+    cancelEvent: async (eventId) => {
+        var ec = await BDLib.contracts['EventCore'].deployed();
+        var theNotify = BD.showCancelNotifyEvent(name);
+        var eventCancelEvent = ec.EventCancelled({ event_id: eventId });
+        eventCancelEvent.watch(async (error, event) => {
+            if (!error) {
+                console.log("EventCancelled Event");
+                BD.notifySucceed(theNotify);
+                BD.forceRefresh();
+            } else {
+                console.log("EVENT CANCEL ERROR: " + error);
+            }
+        });
+        var txResult = await ec.cancel(eventId);
+        return txResult;
+    },
+
     pollEvent: async (eventId) => {
         var ec = await BDLib.contracts['EventCore'].deployed();
-        var txResult = await ec.poll(eventId);
+        var pollGasPrice = web3.toWei(1,"gwei");
+        var pollGasLimit = 6000000;
+        var txResult = await ec.poll(eventId,{gasPrice:pollGasPrice,gasLimit:pollGasLimit});
         return txResult;
     },
 

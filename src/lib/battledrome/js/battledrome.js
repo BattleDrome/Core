@@ -78,7 +78,23 @@ BD = {
         BD.refreshEvents();
         //BD.refreshMarketplace();
         //BD.refreshAcademy();
+        window.setTimeout(BD.updateAddCards, 500);
         notify.close();
+    },
+
+    updateAddCards: function () {
+        //Warrior Add Card
+        if($("#warrior_create_card")!=undefined){
+            $("#warrior_create_card").remove();
+        }
+        $("#warriors_container").append("<div id='warrior_create_card'></div>");
+        $("#warrior_create_card").load("templates/warrior_create_card.html");
+        //Event Add Card
+        if($("#event_create_card")!=undefined){
+            $("#event_create_card").remove();
+        }
+        $("#events_container").append("<div id='event_create_card'></div>");
+        $("#event_create_card").load("templates/event_create_card.html");
     },
 
     loadDialog: function (dialogName) {
@@ -92,6 +108,7 @@ BD = {
         BD.loadDialog("warrior_create_dialog");
         BD.loadDialog("warrior_teach_dialog");
         BD.loadDialog("warrior_sell_dialog");
+        BD.loadDialog("warrior_pay_dialog");
         BD.loadDialog("warrior_name_dialog");
         BD.loadDialog("event_create_dialog");
         BD.loadDialog("event_join_dialog");
@@ -152,6 +169,10 @@ BD = {
 
     showStartEventNotify: function () {
         return BD.showNotify("Event Start", "Transaction Pending...", "info", 0);
+    },
+
+    showCancelNotifyEvent: function () {
+        return BD.showNotify("Event Cancellation", "Transaction Pending...", "info", 0);
     },
 
     showWarriorNotify: function (name,action) {
@@ -251,6 +272,10 @@ BD = {
     },
 
     createWarrior: function () {
+        $("#modalCreateWarrior").modal();
+    },
+
+    doCreateWarrior: function () {
         var warriorName = $('#cw_name').val();
         var colorHue = $('#cw_color').val();
         var weaponType = $('#cw_weaponType').val();
@@ -260,6 +285,10 @@ BD = {
     },
 
     createEvent: function () {
+        $("#modalCreateEvent").modal();
+    },
+
+    doCreateEvent: function () {
         var warriorMin = $('#ce_warriormin').val();
         var warriorMax = $('#ce_warriormax').val();
         var minLevel = $('#ce_minlevel').val();
@@ -272,7 +301,7 @@ BD = {
             BDLib.createEvent(warriorMin, warriorMax, minLevel, maxLevel, minEquipLevel, maxEquipLevel, maxPolls, joinFee);
         }else{
             console.log("Could Not Create Event");
-            alert("You are not currently able to create an event!\r\nYou may not be able to afford it, your parameters may be incorrect, or you may already have an active (unfinished) event!");
+            BD.showNotify("Event Creation Error", "You are not currently able to create an event! You may not be able to afford it, your parameters may be incorrect, or you may already have an active (unfinished) event!", "danger", 5000);
         }
     },
 
@@ -281,7 +310,7 @@ BD = {
             $("#modalWarriorName").modal();
             $("#wn_id").val(warriorId);
         }else{
-            alert("The Warrior is Busy, can't currently be Named!");
+            BD.showNotify("Name Error", "The Warrior is Busy, can't currently be Named!", "danger", 5000);
         }        
     },
 
@@ -289,6 +318,21 @@ BD = {
         var warriorId = $("#wn_id").val();
         var name = $("#wn_name").val();
         BDLib.setWarriorName(warriorId,name);
+    },
+
+    payWarrior: async (warriorId) => {
+        if((await BDLib.getWarriorState(warriorId))==0){
+            $("#modalWarriorPay").modal();
+            $("#wp_id").val(warriorId);
+        }else{
+            BD.showNotify("Pay Error", "The Warrior is Busy, can't currently be Payed!", "danger", 5000);
+        }        
+    },
+
+    doPayWarrior: async () => {
+        var warriorId = $("#wp_id").val();
+        var amount = parseFloat($("#wp_amount").val());
+        BDLib.payWarrior(warriorId,amount);
     },
 
     buyStat: function (warriorIndex, stat) {
@@ -320,8 +364,12 @@ BD = {
         var pointBalance = $('#warriors_container_warrior_card_' + warriorIndex + ' #data_points').text();
         console.log("Purchase Cost:" + pointCost + " Balance:" + pointBalance);
         if (parseInt(pointBalance) >= parseInt(pointCost)) {
-            BD.resetStats(warriorIndex);
-            BDLib.purchaseStats(warriorIndex, strBuyVal, dexBuyVal, conBuyVal, luckBuyVal);
+            if(strBuyVal>0 || conBuyVal>0 || dexBuyVal>0 || luckBuyVal>0){
+                BD.resetStats(warriorIndex);
+                BDLib.purchaseStats(warriorIndex, strBuyVal, dexBuyVal, conBuyVal, luckBuyVal);
+            }else{
+                BD.showNotify("Purchase Error", "You haven't specified any attributes to purchase! This would waste gas!", "danger", 5000);
+            }
         } else {
             BD.showNotify("Purchase Error", "The warrior doesn't have enough points for this attribute purchase!", "danger", 5000);
         }
@@ -370,13 +418,13 @@ BD = {
     },
 
     doJoinEvent: async (eventIndex, warriorIndex) => {
+        $("#modalJoinEvent").modal('toggle');
         if (await BDLib.canJoinEvent(eventIndex, warriorIndex)) {
-            $("#modalJoinEvent").modal('toggle');
             console.log("Joined Event:" + eventIndex + " With Warrior:" + warriorIndex);
             await BDLib.joinEvent(eventIndex, warriorIndex);
         } else {
             console.log("Could Not Join Event:" + eventIndex + " With Warrior:" + warriorIndex);
-            alert("That Warrior can not join this Event!\r\nPlease double-check the event requirements and warrior statistics!");
+            BD.showNotify("Join Error", "That Warrior can not join this Event!<br>Please double-check the event requirements and warrior statistics!", "danger", 5000);
         }
     },
 
@@ -386,12 +434,18 @@ BD = {
             await BDLib.startEvent(eventIndex);
         } else {
             console.log("Could Not Start Event:" + eventIndex);
-            alert("That Event can not currently Start!\r\nPlease double-check the event requirements!");
+            BD.showNotify("Start Error", "That Event can not currently Start!<br>Please double-check the event requirements!", "danger", 5000);
         }
     },
 
-    cancelEvent: function (eventIndex) {
-        console.log("CancelEvent! " + eventIndex);
+    cancelEvent: async (eventIndex) => {
+        if (await BDLib.canCancelEvent(eventIndex)) {
+            console.log("Cancelled Event:" + eventIndex);
+            await BDLib.cancelEvent(eventIndex);
+        } else {
+            console.log("Could Not Cancel Event:" + eventIndex);
+            BD.showNotify("Cancel Error", "That Event can not currently be Cancelled!", "danger", 5000);
+        }
     },
 
     watchEvent: function (eventIndex) {
@@ -540,11 +594,11 @@ BD = {
     pollCurrentEvent: async () => {
         var eventId = BD.currentEvent;
         if((await BDLib.getEventState(eventId))==1){
-            if(BDLib.canPollEvent(eventId)){
+            if(await BDLib.canPollEvent(eventId)){
                 BDLib.pollEvent(eventId);
             }else{
                 console.log("Could Not Poll Event");
-                alert("You are not currently able to poll this event!\r\nYou are likely the last poller, meaning you have to wait to let someone else have a turn, then you can poll again!");
+                alert("You are not currently able to poll this event!\r\nYou are likely the most recent poller, meaning you have to wait to let someone else have a turn, then you can poll again!");
             }            
         }else{
             alert("The Event is not Active, can't be Polled!");
@@ -575,7 +629,7 @@ BD = {
         if((await BDLib.getWarriorState(warriorId))==0){
             BDLib.warriorPractice(warriorId);
         }else{
-            alert("Warrior Is Busy! Can't currently Practice!");
+            BD.showNotify("Practice Error", "Warrior Is Busy! Can't currently Practice!", "danger", 5000);
         }
     },
 
@@ -585,10 +639,10 @@ BD = {
                 BDLib.warriorStopPracticing(warriorId);
             }else{
                 var minsLeft = BD.warriorTrainingMinutesLeft(warriorId);
-                alert("The warrior hasn't completed the current training cycle yet!\r\nPlease wait approximately "+minsLeft+" Minutes!");
+                BD.showNotify("Practice Error", "The warrior hasn't completed the current training cycle yet!<br>Please wait approximately "+minsLeft+" Minutes!", "danger", 5000);
             }
         }else{
-            alert("The Warrior isn't currently Practicing!");
+            BD.showNotify("Practice Error", "The Warrior isn't currently Practicing!", "danger", 5000);
         }
     },
 
@@ -598,10 +652,10 @@ BD = {
                 BDLib.warriorStopTraining(warriorId);
             }else{
                 var minsLeft = BD.warriorTrainingMinutesLeft(warriorId);
-                alert("The warrior hasn't completed the current training cycle yet!\r\nPlease wait approximately "+minsLeft+" Minutes!");
+                BD.showNotify("Training Error", "The warrior hasn't completed the current training cycle yet!<br>Please wait approximately "+minsLeft+" Minutes!", "danger", 5000);
             }
         }else{
-            alert("The Warrior isn't currently Training!");
+            BD.showNotify("Training Error", "The Warrior isn't currently Training!", "danger", 5000);
         }
     },
 
@@ -618,7 +672,7 @@ BD = {
             $("#modalWarriorTeach").modal();
             $("#wt_id").val(warriorId);
         }else{
-            alert("The Warrior is Busy, can't currently Teach!");
+            BD.showNotify("Teaching Error", "The Warrior is Busy, can't currently Teach!", "danger", 5000);
         }        
     },
 
@@ -635,10 +689,10 @@ BD = {
                 BDLib.warriorStopTeaching(warriorId);
             }else{
                 var minsLeft = BD.warriorTrainingMinutesLeft(warriorId);
-                alert("The warrior hasn't completed the current training cycle yet!\r\nPlease wait approximately "+minsLeft+" Minutes!");
+                BD.showNotify("Teaching Error", "The warrior hasn't completed the current training cycle yet!<br>Please wait approximately "+minsLeft+" Minutes!", "danger", 5000);
             }
         }else{
-            alert("The Warrior isn't currently Teaching!");
+            BD.showNotify("Teaching Error", "The Warrior isn't currently Teaching!", "danger", 5000);
         }
     },
 
@@ -652,13 +706,13 @@ BD = {
     },
 
     doWarriorTrainWith: async (trainerId,warriorId) => {
+        $("#modalTrainWith").modal('toggle');
         if (await BDLib.canTrainWith(warriorId, trainerId)) {
-            $("#modalTrainWith").modal('toggle');
             console.log("Warrior:" + warriorId + " Training With Trainer:" + trainerId);
             await BDLib.warriorTrainWith(warriorId, trainerId);
         } else {
             console.log("Warrior:" + warriorId + " Could Not Train With:" + trainerId);
-            alert("That Warrior can not train with this trainer!\r\nThis may be because the trainer is not higher level,\r\nor the trainers primary stat is not higher than this warrior's primary stat,\r\nor the warrior can not afford the fee!");
+            BD.showNotify("Training Error", "That Warrior can not train with this trainer!<br>This may be because the trainer is not higher level,<br>or the trainers primary stat is not higher than this warrior's primary stat,<br>or the warrior can not afford the fee!", "danger", 5000);
         }
     },
 
@@ -666,7 +720,7 @@ BD = {
         if((await BDLib.getWarriorState(warriorId))==6){
             BDLib.warriorRevive(warriorId);
         }else{
-            alert("The Warrior doesn't currently require Reviving!");
+            BD.showNotify("Revive Error", "The Warrior doesn't currently require Reviving!", "danger", 5000);
         }
     },
 
@@ -676,13 +730,13 @@ BD = {
                 if((await BDLib.getWarriorDmg(warriorId))>0){
                     BDLib.warriorDrinkPotion(warriorId);
                 }else{
-                    alert("The Warrior is currently undamaged, no need for a potion!");    
+                    BD.showNotify("Potion Error", "The Warrior is currently undamaged, no need for a potion!", "danger", 5000);
                 }
             }else{
-                alert("The Warrior currently doesn't have any potions!");    
+                BD.showNotify("Potion Error", "The Warrior currently doesn't have any potions!", "danger", 5000);
             }
         }else{
-            alert("The Warrior is Busy, can't currently drink potions!");
+            BD.showNotify("Potion Error", "The Warrior is Busy, can't currently drink potions!", "danger", 5000);
         }
     },
 
@@ -690,7 +744,7 @@ BD = {
         if((await BDLib.getWarriorState(warriorId))==0 || (await BDLib.getWarriorState(warriorId))==6){
             BDLib.warriorRetire(warriorId);
         }else{
-            alert("The Warrior is Busy, can't currently Retire!");
+            BD.showNotify("Retire Error", "The Warrior is Busy, can't currently Retire!", "danger", 5000);
         }
     },
 
@@ -707,7 +761,7 @@ BD = {
             $("#modalWarriorSell").modal();
             $("#ws_id").val(warriorId);
         }else{
-            alert("The Warrior is Busy, can't currently be Sold!");
+            BD.showNotify("Sale Error", "The Warrior is Busy, can't currently Be Sold!", "danger", 5000);
         }        
     },
 
@@ -721,7 +775,7 @@ BD = {
         if((await BDLib.getWarriorState(warriorId))==8){
             BDLib.warriorEndSale(warriorId);
         }else{
-            alert("The Warrior is not currently being sold! Nothing to stop!");
+            BD.showNotify("Sale Error", "The Warrior is not currently being sold! Nothing to stop!", "danger", 5000);
         }
     },
 

@@ -436,6 +436,10 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
         return LibWarrior.canTrainWith(warriors[warriorID],warriors[trainerID]);
     }
 
+    function getEquipLevel(uint warriorID) public view returns(uint) {
+        return LibWarrior.getEquipLevel(warriors[warriorID]);
+    }
+
     //////////////////////////////////////////////////////////////////////////////////////////
     // Costing Getters
     //////////////////////////////////////////////////////////////////////////////////////////
