@@ -55,18 +55,6 @@ sudo npm install -g truffle
 ## Development Guide
 Please follow the below guidelines for development
 
-### Branching Strategy
-- Each "Feature" should get a new branch from "develop" branch. From Dev Env `git checkout -b new_feature origin/develop`
-- Develop within the branch. Commit frequently and push after each commit.
-- When feature is "done" merge back into develop.
-    - Checkout develop: `git checkout develop`
-    - Merge: `git merge new_feature --no-ff`
-    - Push: `git push` (note conflict resolution may be needed, pull, manual merge, etc)
-- Develop should run CI jobs with unit tests etc on commit
-- When ready for some kind of release, code review, then merge back to "master" branch
-- Tag each release
-- Tagged releases trigger CI build/test as well as (eventually) deploy.
-
 ### Using Ganache
 
 The development network in the project config targets Ganache as a blockchain. This requires you have Ganache installed and running for any development or testing.
@@ -117,30 +105,11 @@ Here is a list of some example common truffle commands. Note I'm leaving off the
 - To Debug a specific transaction from it's transaction ID: `debug [txid]` and follow the prompts
 - To exist from the truffle CLI `.exit`
 
-### CI/CD (Continuous Integration/Continuous Delivery)
-
-CI/CD is configured on this project, commits will automatically fire truffle compile, migrate and test using the ganache-cli blockchain.
-
-Currently the following pipeline runs on every commit:
-
-compile -> migrate -> test
-
-For any commit to the `develop` branch, the following additional stages run:
-
-deploy_compile -> dev_web_deploy
-
-For any commit to the `master` branch, the following stages run:
-
-deploy_compile -> prod_web_deploy -> prod_contract_deploy
-
-These pipelines aren't all complete yet, for now the dev deployment, and regular testing pipelines work fine. Future development will continue to flesh these out, and this documentation will be updated to reflect.
-
 ## Testing
 
 For testing, follow the development setup guide above to setup your environment. Using the dev environment, you'll want to have Ganache running, and have run the compile and migrate (to deploy the contracts to your local Ganache blockchain). Then you'll need a browser with metamask installed (As per development setup instructions) and then you can test at the following url:
 http://appdev.battledrome.io/
 
 Testing plans, details, etc to follow in documentation later.
-
 
 Further CI/CD pipelines for app deployment, and documentation generation coming soon.
