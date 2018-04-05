@@ -61,6 +61,18 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 		address indexed owner
         );
         
+    event EventUnclaimedBonus(
+        uint32 indexed event_id,
+        uint32 timeStamp,
+		uint amount
+        );
+
+    event EventHasUnclaimed(
+        uint32 indexed event_id,
+        uint32 timeStamp,
+		uint amount
+        );
+	
     event EventStarted(
         uint32 indexed event_id,
         uint32 timeStamp
@@ -168,7 +180,7 @@ contract EventCore is controlled,mortal,priced,hasRNG {
     }
 
 	function getNewEventFee(uint _warriorCount, uint _pollCount) public pure returns(uint) {
-		return basePollCost * _warriorCount * _pollCount * 2;
+		return basePollCost * (_warriorCount+1) * (_pollCount+1) * 2;
 	}
 
 	function hasCurrentEvent(address owner) public view returns(bool) {
@@ -222,13 +234,15 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 	function getUnclaimedContribution(uint eventID) internal {
 		Event storage e = events[eventID];
 		uint eventFee = getNewEventFee(e.warriorMax,e.maxPolls);
+		uint unclaimedAmount;
 		if(unclaimedPool>eventFee){
-			unclaimedPool -= eventFee;
-			e.balance += eventFee;
+			unclaimedAmount = eventFee;
 		}else{
-			unclaimedPool = 0;
-			e.balance += unclaimedPool;
+			unclaimedAmount = unclaimedPool;
 		}
+		unclaimedPool -= unclaimedAmount;
+		e.balance += unclaimedAmount;
+		EventUnclaimedBonus(uint32(eventID),uint32(now),unclaimedAmount);
 	}
 
 	function getEventCount() public view returns(uint) {
@@ -477,10 +491,15 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 		}
 	}
 
+	function getUnclaimedPool() public view returns (uint) {
+		return unclaimedPool;
+	}
+
 	function unclaimedWinnerRewards(uint eventID, uint amount) internal {
 		require(getBalance(eventID)>=amount);
 		events[eventID].balance -= amount;
 		unclaimedPool += amount;
+		EventHasUnclaimed(uint32(eventID),uint32(now),amount);
 	}
 
 	function getTimeSinceLastPoll(uint eventID) public view returns (uint) {

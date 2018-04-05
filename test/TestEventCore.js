@@ -34,7 +34,7 @@ contract('EventCore', function(accounts) {
 
     it("Should allow for reasonable event creation fee", async () => {
         var eventFee = await coreInstance.getNewEventFee.call(5,10);
-        assert.isBelow(eventFee.valueOf(),web3.toWei(1001,"finney"),"The minimum cost of a new event is too high!");
+        assert.isBelow(eventFee.valueOf(),web3.toWei(1500,"finney"),"The minimum cost of a new event is too high!");
     });
 
     it("Should allow user to create event if none exist yet", async () => {
@@ -329,10 +329,10 @@ contract('EventCore', function(accounts) {
         assert.isTrue(canCreate,"canCreateEvent() returned false!");
     });
     
-    it("Should allow the actual creation of another new event", async () => {
+    it("Should allow the actual creation of another new event (with low poll count to test unclaimed pool)", async () => {
         var eventEmitted = false;
         var eventFee = await coreInstance.getNewEventFee.call(5,5);
-        txResult = await coreInstance.newEvent(2,5,0,5,0,5,5,web3.toWei(1,"finney"),{from:web3.eth.accounts[5],value:eventFee.valueOf()});
+        txResult = await coreInstance.newEvent(4,5,0,5,0,5,1,web3.toWei(10,"finney"),{from:web3.eth.accounts[5],value:eventFee.valueOf()});
         for(var i=0; i<txResult.logs.length; i++) {
             var log = txResult.logs[i];
             if(log.event == "EventCreated") eventEmitted = true;
@@ -340,4 +340,198 @@ contract('EventCore', function(accounts) {
         assert.equal(eventEmitted, true, "The EventCreated Event was not detected!")
     });
     
+    it("Should Allow a New Warrior to Join", async () => {
+        wCoreInstance = await WarriorCore.deployed();
+        var warriorFee = await wCoreInstance.getWarriorCost.call();
+        var txResult = await wCoreInstance.newWarrior(web3.eth.accounts[0],0,0,0,0,{value:warriorFee});
+        var eventFound = false;
+        var warriorID = 0;
+        var warriorCount = 0;
+        var gasUsed = txResult.receipt.cumulativeGasUsed;
+        for(var i=0; i<txResult.logs.length; i++) {
+            var log = txResult.logs[i];
+            if(log.event=="WarriorCreated"){
+                eventFound = true;
+                warriorID = log.args.warrior;
+                warriorCount = await wCoreInstance.getGlobalWarriorCount.call();
+            }
+        }
+        await wCoreInstance.setName(warriorID,"Bob2");
+        assert.isTrue(eventFound,"The Warrior Created Event was Not Emitted!");
+        var warriorBalance = await wCoreInstance.getBalance.call(warriorID);
+        var joinFee = await coreInstance.getJoinFee.call(1);
+        assert.isAbove(warriorBalance,joinFee,"The Warrior Can't Afford To Join!");
+        await wCoreInstance.joinEvent(warriorID,1);
+        var newParticipantCount = await coreInstance.getParticipantCount.call(1);
+        assert.equal(newParticipantCount,1,"First Warrior did not successfully join the event!");
+    });
+
+    it("Should Allow A Second Warrior to Join", async () => {
+        var warriorFee = await wCoreInstance.getWarriorCost.call();
+        var txResult = await wCoreInstance.newWarrior(web3.eth.accounts[0],0,0,0,0,{value:warriorFee});
+        var eventFound = false;
+        var warriorID = 0;
+        var warriorCount = 0;
+        var gasUsed = txResult.receipt.cumulativeGasUsed;
+        for(var i=0; i<txResult.logs.length; i++) {
+            var log = txResult.logs[i];
+            if(log.event=="WarriorCreated"){
+                eventFound = true;
+                warriorID = log.args.warrior;
+                warriorCount = await wCoreInstance.getGlobalWarriorCount.call();
+            }
+        }
+        await wCoreInstance.setName(warriorID,"Joey2");        
+        assert.isTrue(eventFound,"The Warrior Created Event was Not Emitted!");
+        var warriorBalance = await wCoreInstance.getBalance.call(warriorID);
+        var joinFee = await coreInstance.getJoinFee.call(1);
+        assert.isAbove(warriorBalance,joinFee,"The Warrior Can't Afford To Join!");
+        await wCoreInstance.joinEvent(warriorID,1);
+        var newParticipantCount = await coreInstance.getParticipantCount.call(1);
+        assert.equal(newParticipantCount,2,"Second Warrior did not successfully join the event!");
+    });
+
+    it("Should Allow A Third Warrior to Join", async () => {
+        var warriorFee = await wCoreInstance.getWarriorCost.call();
+        var txResult = await wCoreInstance.newWarrior(web3.eth.accounts[0],0,0,0,0,{value:warriorFee});
+        var eventFound = false;
+        var warriorID = 0;
+        var warriorCount = 0;
+        var gasUsed = txResult.receipt.cumulativeGasUsed;
+        for(var i=0; i<txResult.logs.length; i++) {
+            var log = txResult.logs[i];
+            if(log.event=="WarriorCreated"){
+                eventFound = true;
+                warriorID = log.args.warrior;
+                warriorCount = await wCoreInstance.getGlobalWarriorCount.call();
+            }
+        }
+        await wCoreInstance.setName(warriorID,"Jimmy2");                
+        assert.isTrue(eventFound,"The Warrior Created Event was Not Emitted!");
+        var warriorBalance = await wCoreInstance.getBalance.call(warriorID);
+        var joinFee = await coreInstance.getJoinFee.call(1);
+        assert.isAbove(warriorBalance,joinFee,"The Warrior Can't Afford To Join!");
+        await wCoreInstance.joinEvent(warriorID,1);
+        var newParticipantCount = await coreInstance.getParticipantCount.call(1);
+        assert.equal(newParticipantCount,3,"Third Warrior did not successfully join the event!");
+    });
+
+    it("Should Allow A Fourth Warrior to Join", async () => {
+        var warriorFee = await wCoreInstance.getWarriorCost.call();
+        var txResult = await wCoreInstance.newWarrior(web3.eth.accounts[0],0,0,0,0,{value:warriorFee});
+        var eventFound = false;
+        var warriorID = 0;
+        var warriorCount = 0;
+        var gasUsed = txResult.receipt.cumulativeGasUsed;
+        for(var i=0; i<txResult.logs.length; i++) {
+            var log = txResult.logs[i];
+            if(log.event=="WarriorCreated"){
+                eventFound = true;
+                warriorID = log.args.warrior;
+                warriorCount = await wCoreInstance.getGlobalWarriorCount.call();
+            }
+        }
+        await wCoreInstance.setName(warriorID,"Steve2");        
+        assert.isTrue(eventFound,"The Warrior Created Event was Not Emitted!");
+        var warriorBalance = await wCoreInstance.getBalance.call(warriorID);
+        var joinFee = await coreInstance.getJoinFee.call(1);
+        assert.isAbove(warriorBalance,joinFee,"The Warrior Can't Afford To Join!");
+        await wCoreInstance.joinEvent(warriorID,1);
+        var newParticipantCount = await coreInstance.getParticipantCount.call(1);
+        assert.equal(newParticipantCount,4,"Fourth Warrior did not successfully join the event!");
+    });
+   
+    it("Should Allow The Event to Start", async () => {
+        var canStart = await coreInstance.canStart.call(1);
+        assert.isTrue(canStart,"The Event canStart() check failed!");
+        var txResult = await coreInstance.start(1);
+        var gasUsed = txResult.receipt.cumulativeGasUsed;
+        var eventFound = false;
+        var eventID = 0;
+        for(var i=0; i<txResult.logs.length; i++) {
+            var log = txResult.logs[i];
+            if(log.event=="EventStarted"){
+                eventFound = true;
+                eventID = log.args.event_id;
+            }
+        }
+        assert.isTrue(eventFound.valueOf(),"The Event Started Event was not emitted!");
+        assert.equal(eventID.valueOf(),1,"The event that started had the wrong ID!");
+        var newState = await coreInstance.getState.call(1);
+        assert.equal(newState.valueOf(),1,"The Event State did not update to Active as expected!");
+        var firstParticipant = await coreInstance.getParticipant.call(1,0);
+        var secondParticipant = await coreInstance.getParticipant.call(1,1);
+        var firstState = await wCoreInstance.getState.call(firstParticipant);
+        var secondState = await wCoreInstance.getState.call(firstParticipant);
+        assert.equal(firstState.valueOf(),5,"The first warrior didn't enter Battling state as expected!");
+        assert.equal(secondState.valueOf(),5,"The second warrior didn't enter Battling state as expected!");
+    });
+
+    it("Should Allow The Event to be Polled Until Completion, with unclaimed prize pool", async () => {
+        var EventFinished = false;
+        var UnclaimedEvent = false;
+        var defeatOccurred = false;
+        var winnerFound = false;
+        var txResult;
+        var gasUsed;
+        var killedID;
+        var killerID;
+        var defeatLoot;
+        var winnerID;
+        var polls = 0;
+        var totalGas = 0;
+        var pollGasPrice = web3.toWei(5,"gwei");
+        var warriorStartingBalance = await wCoreInstance.getWarriorCost.call();
+        var pollBalance = web3.eth.getBalance(web3.eth.accounts[2]);
+        while(!EventFinished){
+            waitSeconds(30);
+            if(polls%2==1){
+                txResult = await coreInstance.poll(1,{from:web3.eth.accounts[2],gasPrice:pollGasPrice});
+            }else{
+                txResult = await coreInstance.poll(1,{from:web3.eth.accounts[3],gasPrice:pollGasPrice});
+            }
+            gasUsed = txResult.receipt.cumulativeGasUsed;
+            polls++;
+            for(var i=0; i<txResult.logs.length; i++) {
+                var log = txResult.logs[i];
+                if(log.event=="EventFinished"){
+                    EventFinished = true;
+                    if(logEvents) console.log("The event has completed!");
+                }
+                if(log.event=="EventHasUnclaimed"){
+                    UnclaimedEvent = true;
+                    if(logEvents) console.log("The event has completed!");
+                }
+            }
+        }
+        var unclaimed = await coreInstance.getUnclaimedPool.call();
+        assert.isAbove(unclaimed.valueOf(),0,"Unclaimed pool didn't increase!");
+        assert.isTrue(UnclaimedEvent.valueOf(),"The EventHasUnclaimed Event was not fired!");
+        assert.isTrue(EventFinished.valueOf(),"Somehow, the event did not finish!");
+    });    
+
+    it("Should allow yet another user to create a third event", async () => {
+        var canCreate = await coreInstance.canCreateEvent.call(5,{from:web3.eth.accounts[6]});
+        assert.isTrue(canCreate,"canCreateEvent() returned false!");
+    });
+
+    it("Should allow the actual creation of a third event (which should receive some unclaimed pool)", async () => {
+        var eventEmitted = false;
+        var unclaimedEventEmitted = false;
+        var eventFee = await coreInstance.getNewEventFee.call(5,5);
+        txResult = await coreInstance.newEvent(4,5,0,5,0,5,5,web3.toWei(10,"finney"),{from:web3.eth.accounts[6],value:eventFee.valueOf()});
+        for(var i=0; i<txResult.logs.length; i++) {
+            var log = txResult.logs[i];
+            if(log.event == "EventCreated") eventEmitted = true;
+            if(log.event == "EventUnclaimedBonus") unclaimedEventEmitted = true;            
+        }
+        var eventBalance = await coreInstance.getBalance.call(2);
+        var eventFeeFinney = parseFloat(web3.fromWei(eventFee,"finney"));
+        var eventBalanceFinney = parseFloat(web3.fromWei(eventBalance,"finney"));
+        assert.isTrue(eventEmitted, "The EventCreated Event was not detected!")
+        assert.isTrue(unclaimedEventEmitted,"The EventUnclaimedBonus Event was not fired!");
+        assert.isAbove(eventBalanceFinney,eventFeeFinney,"The event did not have the extra boosted prize pool as expected!");
+    });
+
+
 });
