@@ -560,9 +560,11 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
 
 	function joinEvent(uint warriorID, uint eventID) public onlyWarriorOwner(warriorID) {
         LibWarrior.warrior storage w = warriors[warriorID];
+        uint joinFee = eventCore.getJoinFee(eventID);
 		//Can the warrior afford to join?
-		require(w.balance>eventCore.getJoinFee(eventID));
-		eventCore.joinEvent.value(eventCore.getJoinFee(eventID))(eventID,warriorID);
+		require(w.balance>joinFee);
+        w.balance -= joinFee;
+		eventCore.joinEvent.value(joinFee)(eventID,warriorID);
 		LibWarrior.setState(w,LibWarrior.warriorState.BattlePending);	
 	}
 
