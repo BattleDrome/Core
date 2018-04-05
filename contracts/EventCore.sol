@@ -419,6 +419,7 @@ contract EventCore is controlled,mortal,priced,hasRNG {
         require(canParticipate(eventID,theWarrior));
 		events[eventID].participants.push(theWarrior);
 		events[eventID].participantsPresent[theWarrior] = true;
+		events[eventID].balance += msg.value;
 		WarriorJoinedEvent(uint32(eventID),uint64(theWarrior),uint32(now));
 	}
 
