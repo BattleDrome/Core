@@ -6,7 +6,7 @@ module.exports = {
     }
   },
   mocha: {
-    slow: 5000,
+    slow: 30000,
   },
   networks: {
     development: {

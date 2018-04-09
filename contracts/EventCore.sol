@@ -184,7 +184,7 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 	}
 
 	function hasCurrentEvent(address owner) public view returns(bool) {
-		return mrEvent[owner] != 0 || events[mrEvent[owner]].state != EventState.Finished;
+		return mrEvent[owner] != 0 && events[mrEvent[owner]].state != EventState.Finished;
 	}
 
 	function canCreateEvent(uint8 warriorMax) public view returns(bool) {
