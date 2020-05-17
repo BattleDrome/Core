@@ -137,8 +137,7 @@ These pipelines aren't all complete yet, for now the dev deployment, and regular
 
 ## Testing
 
-For testing, follow the development setup guide above to setup your environment. Using the dev environment, you'll want to have Ganache running, and have run the compile and migrate (to deploy the contracts to your local Ganache blockchain). Then you'll need a browser with metamask installed (As per development setup instructions) and then you can test at the following url:
-http://appdev.battledrome.io/
+For testing, follow the development setup guide above to setup your environment. Using the dev environment, you'll want to have Ganache running, and have run the compile and migrate (to deploy the contracts to your local Ganache blockchain). Then you'll need a browser with metamask installed (As per development setup instructions)
 
 Testing plans, details, etc to follow in documentation later.
 
