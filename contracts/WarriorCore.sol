@@ -1,10 +1,11 @@
-pragma solidity ^0.4.18;
+pragma solidity 0.5.11;
 
 import "./Utils.sol";
 import "./EventCore.sol";
 import "./LibWarrior.sol";
+import "./Random.sol";
 
-contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,priced {
+contract WarriorCore is owned,simpleTransferrable,controlled,mortal,priced {
 
     //////////////////////////////////////////////////////////////////////////////////////////
     // Config
@@ -33,9 +34,11 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
 	}
 
 	EventCore eventCore;
+    Random rng;
 
 	mapping(address=>AccountData) warriorMapping;
 	mapping(string=>bool) warriorNames;
+	mapping(string=>uint) warriorsByName;
     mapping(uint=>uint) trainerMapping;
 
 	LibWarrior.warrior[] warriors;
@@ -88,7 +91,7 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
     }
 
     modifier onlyAfter(uint warriorID, uint _time) {
-        require(now >= warriors[warriorID].creationTime + _time);
+        require(now >= warriors[warriorID].creationTime + _time,"DELAY");
         _;
     }
 
@@ -98,6 +101,11 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
 
     event WarriorCreated(
         address indexed creator,
+        uint64 indexed warrior,
+        uint32 timeStamp
+        );
+
+    event WarriorAltered(
         uint64 indexed warrior,
         uint32 timeStamp
         );
@@ -127,7 +135,7 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
         uint64 indexed warrior,
         uint32 timeStamp
         );
-
+    
     event WarriorDoneTraining(
         uint64 indexed warrior,
         uint32 timeStamp
@@ -165,9 +173,9 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
     // Warrior Constructor
     //////////////////////////////////////////////////////////////////////////////////////////
 
-	function newWarrior(address warriorOwner, uint16 colorHue, uint8 armorType, uint8 shieldType, uint8 weaponType) public payable costs(warriorCost) returns(uint theNewWarrior) {
+	function newWarrior(address payable warriorOwner, uint16 colorHue, uint8 armorType, uint8 shieldType, uint8 weaponType) public payable costs(warriorCost) returns(uint theNewWarrior) {
         //Generate a new random seed for the warrior
-        uint randomSeed = getRandom();
+        uint randomSeed = rng.getRandomUint256();
 		//Generate a new warrior, and add it to the warriors array
 		warriors.push(LibWarrior.newWarrior(warriorOwner,randomSeed,colorHue,LibWarrior.ArmorType(armorType),LibWarrior.ShieldType(shieldType),LibWarrior.WeaponType(weaponType)));
 		//Add the warrior to the appropriate owner index
@@ -175,7 +183,7 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
 		//Pay the warrior the fee
 		LibWarrior.payWarriorInternal(warriors[warriors.length-1],warriorCost,false);
         //Fire the event
-        WarriorCreated(warriorOwner,uint64(warriors.length-1),uint32(now));
+        emit WarriorCreated(warriorOwner,uint64(warriors.length-1),uint32(now));
 		//Return new warrior index
 		return warriors.length-1;
 	}
@@ -190,6 +198,10 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
 
 	function getWarriorID(address warriorOwner, uint warriorNumber) public view returns(uint) {
 		return warriorMapping[warriorOwner].warriors[warriorNumber];
+	}
+
+	function getWarriorIDByName(string memory name) public view returns(uint) {
+		return warriorsByName[name];
 	}
 
 	function getWarriorCount(address warriorOwner) public view returns(uint) {
@@ -210,17 +222,17 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
 		warriorMapping[warriorOwner].warriors.push(theWarrior);
 	}
 
-    function nameExists(string _name) public view returns(bool) {
+    function nameExists(string memory _name) public view returns(bool) {
         return warriorNames[_name] == true;
     }
 
-	function transferOwnershipInternal(uint warriorID, address oldOwner, address newOwner) internal {
+	function transferOwnershipInternal(uint warriorID, address oldOwner, address payable newOwner) internal {
 		removeWarrior(oldOwner,warriorID);
 		addWarrior(newOwner,warriorID);
         LibWarrior.setOwner(warriors[warriorID],newOwner);
 	}
 
-	function transferOwnership(uint warriorID, address oldOwner, address newOwner) public onlyWarriorOwner(warriorID) {
+	function transferOwnership(uint warriorID, address payable oldOwner, address payable newOwner) public onlyWarriorOwner(warriorID) {
         transferOwnershipInternal(warriorID,oldOwner,newOwner);
 	}
 
@@ -380,7 +392,7 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
     // Derived/Calculated Getters
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    function getName(uint warriorID) public view returns(string) {
+    function getName(uint warriorID) public view returns(string memory) {
         return LibWarrior.getName(warriors[warriorID]);
     }
 
@@ -417,11 +429,11 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
     }
 
     function getLuckFactor(uint warriorID) internal returns (uint) {
-        return getRandomRange24(0,warriors[warriorID].luck*luckMultiplier);
+        return rng.getRandomRange24(0,warriors[warriorID].luck*luckMultiplier);
     }
 
-    function getCosmeticProperty(uint warriorID, uint propertyIndex) public view returns (uint) {
-        return LibWarrior.getCosmeticProperty(warriors[warriorID],propertyIndex);
+    function getCosmeticProperty(uint warriorID, uint propertyIndex) public view returns (uint48) {
+        return uint48(LibWarrior.getCosmeticProperty(warriors[warriorID],propertyIndex));
     }
 
     function getWeaponClass(uint warriorID) public view returns(LibWarrior.WeaponClass) {
@@ -456,17 +468,23 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
     // Setters
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    function setName(uint warriorID, string name) public onlyWarriorOwner(warriorID) {
+    function setName(uint warriorID, string memory name) public onlyWarriorOwner(warriorID) {
 		//Check if the name is unique
 		require(!nameExists(name));
         //Set the name
         LibWarrior.setName(warriors[warriorID],name);
         //Add warrior's name to index
         warriorNames[name] = true;
+        warriorsByName[name] = warriorID;
+        touch(warriorID);
     }
 
     function setEventCore(address core) public onlyOwner {
         eventCore = EventCore(core);
+    }
+
+    function setRNG(address rngContract) public onlyOwner {
+        rng = Random(rngContract);
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -475,10 +493,12 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
 
     function buyStats(uint warriorID, uint8 strAmount, uint8 dexAmount, uint8 conAmount, uint8 luckAmount) public onlyWarriorOwner(warriorID) onlyState(warriorID,LibWarrior.warriorState.Idle) costsPoints(warriorID,getStatsCost(warriorID,strAmount,dexAmount,conAmount,luckAmount)) {
         LibWarrior.buyStats(warriors[warriorID],strAmount,dexAmount,conAmount,luckAmount);
+        touch(warriorID);
     }
 
     function buyEquipment(uint warriorID, uint8 armorAmount, uint8 shieldAmount, uint8 weaponAmount, uint8 potionAmount, uint8 intPotionAmount) public payable costsPassThrough(getEquipCost(warriorID,armorAmount,shieldAmount,weaponAmount,potionAmount,intPotionAmount),warriorID) onlyState(warriorID, LibWarrior.warriorState.Idle) {
         LibWarrior.buyEquipment(warriors[warriorID],armorAmount,shieldAmount,weaponAmount,potionAmount,intPotionAmount);
+        touch(warriorID);
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -487,11 +507,21 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
 
 	function payWarrior(uint warriorID) payable public {
 		LibWarrior.payWarriorInternal(warriors[warriorID],msg.value,false);
+        touch(warriorID);
+	}
+
+	function payWarriorWithTax(uint warriorID) payable public {
+		LibWarrior.payWarriorInternal(warriors[warriorID],msg.value,true);
+        touch(warriorID);
 	}
 
     //////////////////////////////////////////////////////////////////////////////////////////
     // Actions/Activities/Effects
     //////////////////////////////////////////////////////////////////////////////////////////
+
+    function touch(uint warriorID) internal {
+        emit WarriorAltered(uint64(warriorID),uint32(now));
+    }
 
 	function awardXP(uint warriorID, uint64 amount) public onlyTrustedEvents {
         LibWarrior.awardXP(warriors[warriorID],amount);
@@ -503,46 +533,46 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
 
     function practice(uint warriorID) public onlyWarriorOwner(warriorID) onlyState(warriorID, LibWarrior.warriorState.Idle) {
         LibWarrior.practice(warriors[warriorID]);
-        WarriorTraining(uint64(warriorID),uint32(now));
+        emit WarriorTraining(uint64(warriorID),uint32(now));
     }
 
 	function stopPracticing(uint warriorID) public onlyWarriorOwner(warriorID) onlyDoneTraining(warriorID) onlyState(warriorID, LibWarrior.warriorState.Practicing) {
         LibWarrior.stopPracticing(warriors[warriorID]);
-        WarriorDoneTraining(uint64(warriorID),uint32(now));
+        emit WarriorDoneTraining(uint64(warriorID),uint32(now));
     }
 
     function startTeaching(uint warriorID, uint teachingFee) public onlyWarriorOwner(warriorID) onlyState(warriorID, LibWarrior.warriorState.Idle) {
         LibWarrior.startTeaching(warriors[warriorID],teachingFee);
         addTrainerToMarket(warriorID);
-        NewTrainer(uint64(warriorID),teachingFee,uint32(now));
+        emit NewTrainer(uint64(warriorID),teachingFee,uint32(now));
     }
 
 	function stopTeaching(uint warriorID) public onlyWarriorOwner(warriorID) onlyDoneTraining(warriorID) onlyState(warriorID, LibWarrior.warriorState.Teaching) {
         LibWarrior.stopTeaching(warriors[warriorID]);
         removeTrainerFromMarket(warriorID);
-        TrainerStopped(uint64(warriorID),uint32(now));
+        emit TrainerStopped(uint64(warriorID),uint32(now));
     }
 
-    function trainWith(uint warriorID, uint trainerID) public onlyWarriorOwner(warriorID) onlyState(warriorID, LibWarrior.warriorState.Idle) onlyState(trainerID, LibWarrior.warriorState.Teaching) onlyDoneTraining(trainerID) {
+    function trainWith(uint warriorID, uint trainerID) public onlyWarriorOwner(warriorID) onlyState(warriorID, LibWarrior.warriorState.Idle) onlyState(trainerID, LibWarrior.warriorState.Teaching){
         LibWarrior.trainWith(warriors[warriorID],warriors[trainerID]);
         trainerMapping[warriorID] = trainerID;
-        WarriorTraining(uint64(trainerID),uint32(now));
-        WarriorTraining(uint64(warriorID),uint32(now));
+        emit WarriorTraining(uint64(trainerID),uint32(now));
+        emit WarriorTraining(uint64(warriorID),uint32(now));
     }
 
 	function stopTraining(uint warriorID) public onlyWarriorOwner(warriorID) onlyDoneTraining(warriorID) onlyState(warriorID, LibWarrior.warriorState.Training) {
         LibWarrior.stopTraining(warriors[warriorID],warriors[trainerMapping[warriorID]]);
-        WarriorDoneTraining(uint64(warriorID),uint32(now));
+        emit WarriorDoneTraining(uint64(warriorID),uint32(now));
     }
 	
     function revive(uint warriorID) public payable costsPassThrough(getReviveCost(warriorID),warriorID) onlyState(warriorID, LibWarrior.warriorState.Incapacitated) {
         LibWarrior.revive(warriors[warriorID]);
-        WarriorRevived(uint64(warriorID),uint32(now));
+        emit WarriorRevived(uint64(warriorID),uint32(now));
     }
 
 	function retire(uint warriorID) public onlyWarriorOwner(warriorID) onlyAfter(warriorID,cashoutDelay) {
         LibWarrior.retire(warriors[warriorID]);
-        WarriorRetired(uint64(warriorID),warriors[warriorID].balance,uint32(now));
+        emit WarriorRetired(uint64(warriorID),warriors[warriorID].balance,uint32(now));
     }
 
     function kill(uint warriorID) public onlyTrustedEvents onlyState(warriorID,LibWarrior.warriorState.Battling) {
@@ -551,11 +581,12 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
 
     function autoPotion(uint warriorID) public onlyTrustedEvents onlyState(warriorID,LibWarrior.warriorState.Battling) {
         LibWarrior.drinkPotion(warriors[warriorID]);
+        emit WarriorDrankPotion(uint64(warriorID),uint32(now));
     }
 
     function drinkPotion(uint warriorID) public onlyWarriorOwner(warriorID) onlyState(warriorID,LibWarrior.warriorState.Idle) {
         LibWarrior.drinkPotion(warriors[warriorID]);
-        WarriorDrankPotion(uint64(warriorID),uint32(now));
+        emit WarriorDrankPotion(uint64(warriorID),uint32(now));
     }
 
 	function joinEvent(uint warriorID, uint eventID) public onlyWarriorOwner(warriorID) {
@@ -565,11 +596,12 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
 		require(w.balance>joinFee);
         w.balance -= joinFee;
 		eventCore.joinEvent.value(joinFee)(eventID,warriorID);
-		LibWarrior.setState(w,LibWarrior.warriorState.BattlePending);	
+		LibWarrior.setState(w,LibWarrior.warriorState.BattlePending);
 	}
 
 	function beginBattle(uint warriorID) public onlyTrustedEvents {
 		LibWarrior.setState(warriors[warriorID],LibWarrior.warriorState.Battling);
+        touch(warriorID);
 	}
 
 	function endBattle(uint warriorID) public onlyTrustedEvents {
@@ -578,6 +610,7 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
 		if(w.state==LibWarrior.warriorState.Battling) {
 			//If so then reset them to idle
 			LibWarrior.setState(w,LibWarrior.warriorState.Idle);
+            touch(warriorID);
 		}
 		//If they are incapacitated, or retired, or already idle, we don't care.
 	}
@@ -593,23 +626,23 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
     function startSale(uint warriorID, uint salePrice) public onlyWarriorOwner(warriorID) onlyState(warriorID,LibWarrior.warriorState.Idle) {
         LibWarrior.startSale(warriors[warriorID],salePrice);
         addWarriorToMarket(warriorID);
-        WarriorSaleStarted(uint64(warriorID),salePrice,uint32(now));
+        emit WarriorSaleStarted(uint64(warriorID),salePrice,uint32(now));
     }
 
     function endSale(uint warriorID) public onlyWarriorOwner(warriorID) onlyState(warriorID,LibWarrior.warriorState.ForSale) {
         LibWarrior.endSale(warriors[warriorID]);
         removeWarriorFromMarket(warriorID);
-        WarriorSaleEnded(uint64(warriorID),uint32(now));
+        emit WarriorSaleEnded(uint64(warriorID),uint32(now));
     }
 
     function purchase(uint warriorID) public payable costs(getSalePrice(warriorID)) onlyState(warriorID,LibWarrior.warriorState.ForSale) {
         LibWarrior.warrior storage w = warriors[warriorID];
-        address oldOwner = w.owner;
+        address payable oldOwner = w.owner;
         oldOwner.transfer(getSalePrice(warriorID));
         LibWarrior.endSale(w);
         transferOwnershipInternal(warriorID,oldOwner,msg.sender);
         removeWarriorFromMarket(warriorID);
-        WarriorPurchased(uint64(warriorID),msg.sender,uint32(now));
+        emit WarriorPurchased(uint64(warriorID),msg.sender,uint32(now));
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -618,7 +651,11 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
 
     function dieRoll(uint warriorID, uint min, uint max) internal returns (uint24 roll) {
 		uint24 lf = uint24(getLuckFactor(warriorID));
-        roll = getRandomRange24(min+lf,max+(lf/2));
+        require(max<(0xFFFFFF-lf),">ROLLMAX");
+        uint24 actualMin = uint24(min+lf);
+        uint24 actualMax = uint24(max+(lf/2));
+        uint24 rolledValue = rng.getRandomRange24(actualMin,actualMax);
+        roll = rolledValue;
     }
 
     function rollHit(uint warriorID) public onlyTrustedEvents returns (uint roll) {
@@ -628,7 +665,7 @@ contract WarriorCore is owned,simpleTransferrable,controlled,mortal,hasRNG,price
     }
 
     function rollDodge(uint warriorID) public onlyTrustedEvents returns (uint roll) {
-        LibWarrior.warrior storage w = warriors[warriorID];
+        LibWarrior.warrior storage w = warriors[warriorID]; // <--- Breakpoint here, pay close attention to dieroll
         uint16 dex = LibWarrior.getCombatDex(w);
 		roll = dieRoll(warriorID,dex/3,dex*2);
     }

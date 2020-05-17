@@ -1,0 +1,240 @@
+.app-outer-container {
+  background-image: url(/images/bg-stone.jpg);
+  background-size: cover;
+  width: 100%;
+  height: 100vh;
+}
+
+.nav {
+  background-color: black;
+  padding-top: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+.card .nav {
+  background-color: transparent;
+  padding-top: 0px;
+  padding-left: 0px;
+  padding-right: 0px;
+  font-size: 12px;
+}
+
+.card .nav-link {
+  padding: 0.1rem 0.25rem;
+}
+
+.logo-image {
+  height: 40px;
+  padding-left: 10px;
+  padding-right: 5px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.flip-icon {
+  height: 20px;
+  width: 20px;
+  float: right;
+}
+
+.create-button {
+  float: right;
+  margin-right: 10px;
+}
+
+.refresh-button {
+  float: right;
+  margin-right: 10px;
+}
+
+.warrior-image {
+  width: 240px;
+  height: 350px;
+  /*
+  background-image: url('../../../images/w_m.png');
+  background-size: cover;
+  */
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: -20px;
+  margin-bottom: -40px;
+}
+
+.progress {
+  height: 15px;
+}
+
+.progress-bar {
+  overflow: visible;
+  white-space: nowrap;
+  display: block;
+}
+
+.progress-bar span {
+  display: inline-block;
+  width: 20px;
+}
+
+.warrior-attribute {
+  display: block;
+  width: 100%;
+}
+
+.warrior-loading {}
+
+.tab-content {
+  height: 95vh;
+}
+
+.tab-pane {
+  height: 95vh;
+}
+
+.back .card-body {
+  padding: 5px;
+}
+
+.card .tab-pane {
+  height: 100%;
+}
+
+.card .tab-content {
+  height: 400px;
+  background-color: #303030;
+}
+
+.pre-scrollable {
+  max-height: 95vh;
+}
+
+.card-container {
+  perspective: 2000px;
+  margin: 8px;
+}
+
+.card {
+  width: 280px;
+  height: 456px;
+  margin: 8px;
+  float: left;
+  -webkit-transition: -webkit-transform 1s;
+  -moz-transition: -moz-transform 1s;
+  -o-transition: -o-transform 1s;
+  transition: transform 1s;
+  -webkit-transform-style: preserve-3d;
+  -moz-transform-style: preserve-3d;
+  -o-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+  -webkit-transform-origin: 50% 50%;
+}
+
+.eventcard-container .card {
+  width: 45%;
+  height: 300px;
+}
+
+.card .front, .back {
+  width: 280px;
+  height: 456px;
+  color: white;
+  text-align: center;
+  position: absolute;
+  -webkit-backface-visibility: hidden;
+  -moz-backface-visibility: hidden;
+  -o-backface-visibility: hidden;
+  backface-visibility: hidden;
+  overflow: hidden;
+}
+
+.card .back {
+  -webkit-transform: rotateY( 180deg);
+  -moz-transform: rotateY( 180deg);
+  -o-transform: rotateY( 180deg);
+  transform: rotateY( 180deg);
+}
+
+.card.flipped {
+  -webkit-transform: rotateY( 180deg);
+  -moz-transform: rotateY( 180deg);
+  -o-transform: rotateY( 180deg);
+  transform: rotateY( 180deg);
+}
+
+.card-body {
+  text-align: center;
+}
+
+.card-lc {
+  float: left;
+}
+
+.card-rc {
+  float: right;
+}
+
+.card .buy-button {
+  font-size: 0.5rem;
+  padding: 0.1rem 0.5rem;
+}
+
+.card .action-button {
+  margin-top: 0.5rem;
+}
+
+.card .badge-status {
+  font-size: 14px;
+}
+
+.card .badge-small {
+  font-size: 0.55em;
+}
+
+#join_warrior_selector button {
+  margin-left: 5px;
+  margin-right: 5px;
+}
+
+.modal-content {
+  box-shadow: 4px 4px 6px #101010;
+}
+
+#modalSpectateEvent .modal-dialog {
+  max-width: 85vw;
+  width: 85vw;
+}
+
+.spectate-left {
+  width:65%;
+  margin:5px;
+}
+
+.spectate-right {
+  width:30%;
+  margin:5px;
+}
+
+#event_combatlog {
+  overflow-y: scroll;
+}
+
+#event_combatlog .alert {
+  margin: 3px;
+  padding: 3px;
+  font-size: 1em;
+  text-align: left;
+}
+
+.page_content {
+  margin: 10px;
+  text-shadow: 2px 2px 1px black;
+}
+
+.card-body .row-spacer {
+  width: 100%;
+  height: 2px;
+  background-color: #202020;
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+

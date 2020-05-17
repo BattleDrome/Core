@@ -1,0 +1,42 @@
+.event_log_container {
+    position: absolute;
+    z-index: 100;
+    right: 5px;
+}
+
+.event_log_entry {
+    width:100%;
+    text-align: left !important;
+    font-size: 0.75em;
+    padding: 1px !important;
+    margin: 2px !important;
+}
+
+.event_log_modal {
+    height: 75%;
+}
+
+.event_log_modal .modal-content {
+    min-height: 100%;
+}
+
+.event_log_modal .modal-body {
+    overflow-y: scroll;
+}
+
+.event_log_item_header {
+    float: left;
+    padding-right: 5px;
+    width: 30%;
+}
+
+.event_log_item_message {
+    float: left;
+    width: 70%;
+}
+
+.event_log_entry::after {
+    content: "";
+    clear: both;
+    display: table;
+}

@@ -1,27 +1,39 @@
-pragma solidity ^0.4.18;
+pragma solidity 0.5.11;
 
 import "./Utils.sol";
 import "./WarriorCore.sol";
 import "./LibWarrior.sol";
+import "./WagerCore.sol";
+import "./SponsorCore.sol";
+import "./Random.sol";
 
-contract EventCore is controlled,mortal,priced,hasRNG {
+contract EventCore is controlled,mortal,priced {
     uint constant minNewTime = 1 hours;
     uint constant minTimeBeforeCancel = 1 hours;
 	uint constant idleTimeBeforeCancel = 24 hours;
-	uint constant basePollCost = 10 finney;
+	uint constant basePollCost = 2.75 finney;
+	uint constant pollRewardPoolDivisor = 5; //Poll reward = 1/pollRewardPoolDivisor of total event pool (ie: if divisor is 5, then poll reward is 1/5 or 20%)
 	uint32 constant minPollDuration = 30 seconds;
 
 	uint8 constant absoluteMaxWarriors = 255;
 	uint8 constant meleesPerPollPerWarrior = 1;
     uint8 constant exchangesPerMelee = 2;
     uint8 constant escapeThreshold = 2;
+	
+	uint8 constant escapeXPBase = 1;
+	uint8 constant hitXPBase = 3;
+	uint8 constant dodgeXPBase = 2;
+	uint8 constant blockXPBase = 2;
+
+	bool constant WAGERING_ENABLED = true;
+	bool constant SPONSORS_ENABLED = true;
 
 	uint public unclaimedPool = 0;
 
 	enum EventState { New, Active, Finished }
 
 	struct Event {
-		address owner;
+		address payable owner;
 		//Storage Cell 1 End
 		uint balance;
 		//Storage Cell 2 End
@@ -31,6 +43,7 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 		//Storage Cell 4 End
 		uint32 timeOpen;
 		uint32 timeStart;
+		uint32 blockStart;
 		uint32 timeFinish;
 		uint32 lastPollTime;
 		uint32 newDuration;
@@ -46,11 +59,14 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 		EventState state;
 		//Variable Length Data:
 		uint[] participants;
-		address[] polls;
+		address payable[] polls;
 		mapping(uint=>bool) participantsPresent;				
 	}
 
     WarriorCore public warriorCore;
+    WagerCore public wagerCore;
+	SponsorCore public sponsorCore;
+	Random public rng;
 
 	Event[] events;
 	mapping(address=>uint) mrEvent;
@@ -159,19 +175,33 @@ contract EventCore is controlled,mortal,priced,hasRNG {
         uint32 timeStamp
         );
 
+	event EquipmentWorn(
+        uint32 indexed event_id,
+        uint64 indexed warrior,
+        uint8 indexed equipment,
+		uint32 result,
+        uint32 timeStamp
+		);
+
+	event Donation(
+		address indexed sender,
+		uint amount,
+		uint32 timeStamp
+		);
+
 	modifier onlyEventState(uint eventID, EventState state) {
-		require(events[eventID].state == state);
+		require(events[eventID].state == state,"!STATE");
 		_;
 	}
 
 	modifier onlyEventOwner(uint eventID) {
-		require(msg.sender == events[eventID].owner);
+		require(msg.sender == events[eventID].owner,"!OWNER");
 		_;
 	}
 
 	modifier onlyTrustedWarriors() {
 		//Check that the message came from the trusted WarriorCore from BattleDromeCore
-		require(msg.sender == address(warriorCore));
+		require(msg.sender == address(warriorCore),"!TRUST");
 		_;
 	}
 
@@ -179,8 +209,28 @@ contract EventCore is controlled,mortal,priced,hasRNG {
         warriorCore = WarriorCore(core);
     }
 
+    function setWagerCore(address core) public onlyOwner {
+        wagerCore = WagerCore(core);
+    }
+    
+	function setSponsorCore(address core) public onlyOwner {
+        sponsorCore = SponsorCore(core);
+    }
+
+	function setRNG(address payable rngContract) public onlyOwner{
+		rng = Random(rngContract);
+	}
+
 	function getNewEventFee(uint _warriorCount, uint _pollCount) public pure returns(uint) {
 		return basePollCost * (_warriorCount+1) * (_pollCount+1) * 2;
+	}
+
+	function getWagerStatus() public pure returns(bool) {
+		return WAGERING_ENABLED;
+	}
+
+	function getSponsorStatus() public pure returns(bool) {
+		return SPONSORS_ENABLED;
 	}
 
 	function hasCurrentEvent(address owner) public view returns(bool) {
@@ -192,7 +242,7 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 	}
 
 	function newEvent(uint8 _warriorMin, uint8 _warriorMax, uint16 _minLevel, uint16 _maxLevel, uint16 _minEquipLevel, uint16 _maxEquipLevel, uint16 _maxPolls, uint _joinFee) public payable costsWithExcess(getNewEventFee(_warriorMax,_maxPolls)) returns(uint theNewEvent) {
-		require(canCreateEvent(_warriorMax));
+		require(canCreateEvent(_warriorMax),"!CREATE");
 
 		//Calculate Durations based on participants
 		uint32 timeBase = 1 hours * _minLevel * _warriorMin;
@@ -205,6 +255,7 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 			0,						//winner
 			uint32(now),			//timeOpen
 			0,						//timeStart
+			0,						//blockStart
 			0,						//timeFinish
 			0,						//lastPollTime
 			timeBase,				//newDuration
@@ -218,13 +269,13 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 			false,					//winnerPresent
 			EventState.New,			//state
 			new uint[](0),			//participants
-			new address[](0)		//polls
+			new address payable[](0)//polls
 									//Note: participantsPresent Mapping Skipped as per Solidity Docs.
 		));
 		//Calculate Unclaimed Contribution
 		getUnclaimedContribution(events.length-1);
 		//Emit Event
-		EventCreated(uint32(events.length-1),uint32(now),msg.sender);
+		emit EventCreated(uint32(events.length-1),uint32(now),msg.sender);
 		//Mark new most recent event for this owner:
 		mrEvent[msg.sender] = events.length-1;
 		//Return new event index
@@ -240,20 +291,22 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 		}else{
 			unclaimedAmount = unclaimedPool;
 		}
-		unclaimedPool -= unclaimedAmount;
-		e.balance += unclaimedAmount;
-		EventUnclaimedBonus(uint32(eventID),uint32(now),unclaimedAmount);
+		if(unclaimedAmount>0){
+			unclaimedPool -= unclaimedAmount;
+			e.balance += unclaimedAmount;
+			emit EventUnclaimedBonus(uint32(eventID),uint32(now),unclaimedAmount);
+		}
 	}
 
 	function getEventCount() public view returns(uint) {
 		return events.length;
 	}
 
-	function transferOwnership(uint theEvent, address newOwner) public onlyEventOwner(theEvent) {
+	function transferOwnership(uint theEvent, address payable newOwner) public onlyEventOwner(theEvent) {
 		events[theEvent].owner = newOwner;
 	}
 
-	function getOwner(uint eventID) public view returns(address) {
+	function getOwner(uint eventID) public view returns(address payable) {
 		return events[eventID].owner;
 	}
 
@@ -266,7 +319,7 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 	}
 
 	function getCurrentRewardPerPoll(uint eventID) public view returns(uint) {
-		return events[eventID].balance/(getPollCount(eventID)*2);
+		return events[eventID].balance/(getPollCount(eventID)*pollRewardPoolDivisor);
 	}
 	
 	function getBalance(uint eventID) public view returns(uint) {
@@ -279,6 +332,10 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 
 	function getPollCount(uint eventID) public view returns(uint32) {
 		return uint32(events[eventID].polls.length);
+	}
+
+	function getPoller(uint eventID, uint idx) public view returns(address) {
+		return events[eventID].polls[idx];
 	}
 
 	function getLastPoll(uint eventID) public view returns(address) {
@@ -295,6 +352,10 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 
 	function getTimeStart(uint eventID) public view returns(uint32) {
 		return events[eventID].timeStart;
+	}
+
+	function getBlockStart(uint eventID) public view returns(uint32) {
+		return events[eventID].blockStart;
 	}
 
 	function getTimeFinish(uint eventID) public view returns(uint32) {
@@ -361,6 +422,7 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 	function canParticipate(uint eventID, uint newWarrior) public view returns(bool) {
 		return (
 			(warriorCore.getState(newWarrior)==LibWarrior.warriorState.Idle)
+			&& events[eventID].participantsPresent[newWarrior]==false
 			&& canAddParticipant(eventID, warriorCore.getLevel(newWarrior))
 			&& (warriorCore.getEquipLevel(newWarrior)>=getMinEquipLevel(eventID))
 		);
@@ -406,6 +468,10 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 		events[eventID].timeStart = _timeStart;
 	}
 
+	function setStartBlock(uint eventID, uint32 _blockStart) internal {
+		events[eventID].blockStart = _blockStart;
+	}
+
 	function setFinishTime(uint eventID, uint32 _timeFinish) internal {
 		events[eventID].timeFinish = _timeFinish;
 	}
@@ -416,11 +482,11 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 
 	function joinEvent(uint eventID, uint theWarrior) public payable onlyTrustedWarriors() costs(getJoinFee(eventID)) {
 		//Is this warrior allowed to join?
-        require(canParticipate(eventID,theWarrior));
+        require(canParticipate(eventID,theWarrior),"!PARTICIPATE");
 		events[eventID].participants.push(theWarrior);
 		events[eventID].participantsPresent[theWarrior] = true;
 		events[eventID].balance += msg.value;
-		WarriorJoinedEvent(uint32(eventID),uint64(theWarrior),uint32(now));
+		emit WarriorJoinedEvent(uint32(eventID),uint64(theWarrior),uint32(now));
 	}
 
 	function setWinner(uint eventID, uint theWinner) internal {
@@ -429,17 +495,19 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 	}
 
     function start(uint eventID) public onlyEventState(eventID,EventState.New) {
-        require(canStart(eventID));
+        require(canStart(eventID),"!START");
         setStartTime(eventID,uint32(now));
+        setStartBlock(eventID,uint32(block.number));
 		setState(eventID,EventState.Active);
         for(uint p=0;p<events[eventID].participants.length;p++) {
 			warriorCore.beginBattle(events[eventID].participants[p]);
 		}
-        EventStarted(uint32(eventID),uint32(now));
+        emit EventStarted(uint32(eventID),uint32(now));
+		triggerSponsorCalculation(eventID);
     }
 
     function cancel(uint eventID) public {
-        require(canCancel(eventID));
+        require(canCancel(eventID),"!CANCEL");
         events[eventID].state = EventState.Finished;
         setFinishTime(eventID,uint32(now));
 		for(uint p=0;p<events[eventID].participants.length;p++) {
@@ -450,7 +518,7 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 		}
 		//Send any remaining event balance back to the event owner
 		events[eventID].owner.transfer(getBalance(eventID));
-        EventCancelled(uint32(eventID),uint32(now));
+        emit EventCancelled(uint32(eventID),uint32(now));
     }
 
     function finish(uint eventID) internal {
@@ -459,19 +527,28 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 		for(uint p=0;p<events[eventID].participants.length;p++) {
 			warriorCore.endBattle(events[eventID].participants[p]);
 		}
-        EventFinished(uint32(eventID),uint32(now));
+        emit EventFinished(uint32(eventID),uint32(now));
 		payPollRewards(eventID);
 		payWinnerRewards(eventID);
+		triggerSponsorPayout(eventID);
     }
 
+	function triggerSponsorCalculation(uint eventID) internal {
+		if(SPONSORS_ENABLED) sponsorCore.calculateWinners(eventID);
+	}
+
+	function triggerSponsorPayout(uint eventID) internal {
+		if(SPONSORS_ENABLED) sponsorCore.paySponsorship(eventID);		
+	}
+
 	function payWarrior(uint eventID, uint amount, uint warriorID) internal {
-		require(events[eventID].balance>=amount);
+		require(events[eventID].balance>=amount,"BALANCE");
 		events[eventID].balance -= amount;
 		warriorCore.payWarrior.value(amount)(warriorID);
 	}
 
-	function payPlayer(uint eventID, uint amount, address player) internal {
-		require(events[eventID].balance>=amount);
+	function payPlayer(uint eventID, uint amount, address payable player) internal {
+		require(events[eventID].balance>=amount,"BALANCE");
 		events[eventID].balance -= amount;
 		player.transfer(amount);
 	}
@@ -497,10 +574,15 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 	}
 
 	function unclaimedWinnerRewards(uint eventID, uint amount) internal {
-		require(getBalance(eventID)>=amount);
+		require(getBalance(eventID)>=amount,"BALANCE");
 		events[eventID].balance -= amount;
 		unclaimedPool += amount;
-		EventHasUnclaimed(uint32(eventID),uint32(now),amount);
+		emit EventHasUnclaimed(uint32(eventID),uint32(now),amount);
+	}
+
+	function donate() public payable {
+		unclaimedPool += msg.value;
+		emit Donation(msg.sender,msg.value,uint32(now));
 	}
 
 	function getTimeSinceLastPoll(uint eventID) public view returns (uint) {
@@ -520,11 +602,14 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 	}
 
 	function poll(uint eventID) public {
-		require(canPoll(eventID));
+		require(canPoll(eventID),"!POLL");
 		events[eventID].polls.push(msg.sender);
 		for(uint melee=0;melee<getParticipantCount(eventID)*meleesPerPollPerWarrior;melee++) {
-			uint8 warriorIdxA = getRandomUint8()%getParticipantCount(eventID);
-			uint8 warriorIdxB = getRandomUint8()%getParticipantCount(eventID)-1;
+			uint8 wCount = getParticipantCount(eventID);
+			uint8 r1 = rng.getRandomUint8();
+			uint8 r2 = rng.getRandomUint8();
+			uint8 warriorIdxA = r1 % wCount;
+			uint8 warriorIdxB = r2 % (wCount-1);
 			if(warriorIdxB>=warriorIdxA) warriorIdxB++;
 			uint a = getParticipant(eventID,warriorIdxA);
 			uint b = getParticipant(eventID,warriorIdxB);
@@ -538,11 +623,12 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 		if(isStalemate(eventID) || hasWinner(eventID)){
 			finish(eventID);
 		} 
-		EventPolled(uint32(eventID),uint32(now),getPollCount(eventID));
+		emit EventPolled(uint32(eventID),uint32(now),getPollCount(eventID));
 	}
 
     function resolveMelee(uint eventID, uint a, uint b) internal returns (bool) {
-		WarriorEngaged(uint32(eventID),uint64(a),uint64(b),uint32(now));
+		require(a!=b,"!MELEESELF");
+		emit WarriorEngaged(uint32(eventID),uint64(a),uint64(b),uint32(now));
 		//Check for First Strike:
 		if(warriorCore.getWeaponClass(a)==LibWarrior.WeaponClass.ExtRange && warriorCore.getWeaponClass(b)!=LibWarrior.WeaponClass.ExtRange) {
 			//A Gets First Strike
@@ -565,13 +651,13 @@ contract EventCore is controlled,mortal,priced,hasRNG {
         warriorCore.earnXPForKill(attacker,warriorCore.getLevel(defender));
         removeParticipant(eventID,defender);
         warriorCore.kill(defender);
-        WarriorDefeated(uint32(eventID),uint64(defender),uint64(attacker),uint16(warriorCore.getLevel(defender)),uint16(warriorCore.getLevel(attacker)),uint32(now));
+        emit WarriorDefeated(uint32(eventID),uint64(defender),uint64(attacker),uint16(warriorCore.getLevel(defender)),uint16(warriorCore.getLevel(attacker)),uint32(now));
     }
 
     function checkForWinner(uint eventID) internal returns(bool) {
         if(getParticipantCount(eventID)==1){
             setWinner(eventID,getParticipant(eventID,0));
-            EventWinner(uint32(eventID),uint64(getParticipant(eventID,0)),uint32(now));
+            emit EventWinner(uint32(eventID),uint64(getParticipant(eventID,0)),uint32(now));
             return true;
         }
         return false;
@@ -584,13 +670,19 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 
     function attemptEscape(uint eventID, uint escapee, uint opponent) internal returns(bool) {
 		bool escaped = warriorCore.rollEscape(escapee) > warriorCore.getDex(opponent);
-		if(escaped) WarriorEscaped(uint32(eventID),uint64(escapee),uint64(opponent),uint32(now));
+		if(escaped) {
+			warriorCore.awardXP(escapee,uint64(escapeXPBase*warriorCore.getLevel(escapee)));
+			emit WarriorEscaped(uint32(eventID),uint64(escapee),uint64(opponent),uint32(now));
+		} 
         return escaped;
 	}
 
     function resolveAttack(uint eventID, uint attacker, uint defender) internal returns(bool defenderDeath) {
+		//BUG HERE
+		//////////////////////////////////////////////
         uint hitRoll = warriorCore.rollHit(attacker);
-		uint dodgeRoll = warriorCore.rollDodge(defender);
+		//////////////////////////////////////////////
+		uint dodgeRoll = warriorCore.rollDodge(defender); //Actually bug is in the final assignment here
 		uint blockRoll = 0;
 		int dmg = 0;
 		uint dmgReduction = 0;
@@ -610,18 +702,22 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 					//Heavy Weapons Bypass some damage reduction
 					dmgReduction = dmgReduction/2;
 				}
+				//Attacker Successfully hit their target!
+				warriorCore.awardXP(attacker,uint64(hitXPBase*warriorCore.getLevel(attacker)));
 				dmg -= int(dmgReduction);
 				if(dmg>0){
 					//Warrior was hit and received damage!
-					WarriorHit(uint32(eventID),uint64(defender),uint64(attacker),uint32(dmg),uint32(now));
+					emit WarriorHit(uint32(eventID),uint64(defender),uint64(attacker),uint32(dmg),uint32(now));
 					warriorCore.wearWeapon(attacker);
+					emit EquipmentWorn(uint32(eventID),uint64(attacker),uint8(0),uint32(warriorCore.getWeapon(attacker)),uint32(now));
 					warriorCore.wearArmor(defender);
+					emit EquipmentWorn(uint32(eventID),uint64(defender),uint8(2),uint32(warriorCore.getArmor(defender)),uint32(now));
 					if(warriorCore.applyDamage(defender,uint64(dmg))) {
 						//Applied damage would result in death
 						if(warriorCore.getPotions(defender)>0) {
 							//Warrior had potions, auto-heal to keep warrior alive!
 							warriorCore.autoPotion(defender);
-							WarriorDrankPotion(uint32(eventID),uint64(defender),uint64(attacker),uint32(now));
+							emit WarriorDrankPotion(uint32(eventID),uint64(defender),uint64(attacker),uint32(now));
 						} else {
 							//No potions, warrior defeated
 							handleDefeat(eventID,attacker,defender);
@@ -630,18 +726,22 @@ contract EventCore is controlled,mortal,priced,hasRNG {
 					}
 				}else{
 					//Damage was nullified. But warrior was still hit
-					WarriorHit(uint32(eventID),uint64(defender),uint64(attacker),0,uint32(now));
+					emit WarriorHit(uint32(eventID),uint64(defender),uint64(attacker),0,uint32(now));
 				}
 			}else{
 				//Hit was Blocked!
-				WarriorBlocked(uint32(eventID),uint64(defender),uint64(attacker),uint32(dmg),uint32(now));
+				warriorCore.awardXP(defender,uint64(blockXPBase*warriorCore.getLevel(defender)));
+				emit WarriorBlocked(uint32(eventID),uint64(defender),uint64(attacker),uint32(dmg),uint32(now));
 				//Block still causes wear to weapon, and to shield
 				warriorCore.wearWeapon(attacker);
+				emit EquipmentWorn(uint32(eventID),uint64(attacker),uint8(0),uint32(warriorCore.getWeapon(attacker)),uint32(now));
 				warriorCore.wearShield(defender);
+				emit EquipmentWorn(uint32(eventID),uint64(defender),uint8(1),uint32(warriorCore.getShield(defender)),uint32(now));
 			}
         } else {
 			//Warrior Dodged The Attack!
-			WarriorDodged(uint32(eventID),uint64(defender),uint64(attacker),uint32(now));
+			warriorCore.awardXP(defender,uint64(dodgeXPBase*warriorCore.getLevel(defender)));
+			emit WarriorDodged(uint32(eventID),uint64(defender),uint64(attacker),uint32(now));
 		}
         return false;
     }
@@ -654,6 +754,7 @@ contract EventCore is controlled,mortal,priced,hasRNG {
                 return;
             }
         }
+		revert("!NotFound");
     }
 
 }

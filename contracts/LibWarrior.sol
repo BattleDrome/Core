@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity 0.5.11;
 
 library LibWarrior {
 	
@@ -9,7 +9,6 @@ library LibWarrior {
     //Warrior Attribute Factors
     uint8 constant hpConFactor = 3;
     uint8 constant hpStrFactor = 1;
-    uint8 constant luckMultiplier = 2;
     uint16 constant startingStr = 5;
     uint16 constant startingDex = 5;
     uint16 constant startingCon = 5;
@@ -33,7 +32,7 @@ library LibWarrior {
     uint constant strCostExponent = 2;
     uint constant dexCostExponent = 2;
     uint constant conCostExponent = 2;
-    uint constant luckCostExponent = 5;
+    uint constant luckCostExponent = 3;
     uint constant potionCost = 100 finney;
     uint constant intPotionCost = 500 finney;
     uint constant armorCost = 1 finney;
@@ -115,7 +114,7 @@ library LibWarrior {
     struct warrior {
 		bytes32 bytesName;
 		//Storage Cell 1 End
-		address owner;
+		address payable owner;
 		//Storage Cell 2 End
 		uint balance;
 		//Storage Cell 3 End
@@ -163,8 +162,8 @@ library LibWarrior {
     // Warrior Constructor
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    function newWarrior(address warriorOwner, uint randomSeed, uint16 colorHue, ArmorType armorType, ShieldType shieldType, WeaponType weaponType) internal view returns (warrior) {
-        warrior memory theWarrior = warrior(
+    function newWarrior(address payable warriorOwner, uint randomSeed, uint16 colorHue, ArmorType armorType, ShieldType shieldType, WeaponType weaponType) internal view returns (warrior memory theWarrior) {
+        theWarrior = warrior(
 			bytes32(0),	            //bytesName Empty to start
 			warriorOwner,			//owner
 			0,						//balance
@@ -196,7 +195,6 @@ library LibWarrior {
             false,                  //helmet
 			warriorState.Idle		//state
         );
-        return theWarrior;
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -204,7 +202,7 @@ library LibWarrior {
     //////////////////////////////////////////////////////////////////////////////////////////
 
     function random(uint seeda, uint seedb) internal pure returns (uint) {
-        return uint(keccak256(seeda,seedb));  
+        return uint(keccak256(abi.encodePacked(seeda,seedb)));  
     }
 
 	function stringToBytes32(string memory source) internal pure returns (bytes32 result) {
@@ -218,7 +216,7 @@ library LibWarrior {
         }
     }
 
-    function bytes32ToString(bytes32 source) internal pure returns (string result) {
+    function bytes32ToString(bytes32 source) internal pure returns (string memory result) {
         uint8 len = 32;
         for(uint8 i;i<32;i++){
             if(source[i]==0){
@@ -227,18 +225,18 @@ library LibWarrior {
             }
         }
         bytes memory bytesArray = new bytes(len);
-        for (i=0;i<len;i++) {
+        for (uint8 i=0;i<len;i++) {
             bytesArray[i] = source[i];
         }
-        return string(bytesArray);
+        result = string(bytesArray);
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
     // Derived/Calculated Getters
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    function getName(warrior storage w) internal view returns(string) {
-        return bytes32ToString(w.bytesName);
+    function getName(warrior storage w) internal view returns(string memory name) {
+        name = bytes32ToString(w.bytesName);
     }
 
     function getBaseHP(warrior storage w) internal view returns (uint) {
@@ -250,10 +248,12 @@ library LibWarrior {
     }
 
     function getWeaponClass(warrior storage w) internal view returns (WeaponClass) {
-        if((w.weaponType==WeaponType.Sword || w.weaponType==WeaponType.Falchion)) return WeaponClass.Slashing;
         if((w.weaponType==WeaponType.Broadsword || w.weaponType==WeaponType.Axe)) return WeaponClass.Cleaving;
         if((w.weaponType==WeaponType.Mace || w.weaponType==WeaponType.Hammer || w.weaponType==WeaponType.Flail)) return WeaponClass.Bludgeoning;
         if((w.weaponType==WeaponType.Trident || w.weaponType==WeaponType.Halberd || w.weaponType==WeaponType.Spear)) return WeaponClass.ExtRange;        
+        //if((w.weaponType==WeaponType.Sword || w.weaponType==WeaponType.Falchion)) return WeaponClass.Slashing;
+        //Default:
+        return WeaponClass.Slashing;
     }
    
     function getArmorMod(warrior storage w) internal view returns(int con, int str, int dex) {
@@ -309,22 +309,23 @@ library LibWarrior {
     }
 
     function getWeaponMod(warrior storage w) internal view returns(int con, int str, int dex) {
-        if(getWeaponClass(w)==WeaponClass.Slashing) {
+        WeaponClass wc = getWeaponClass(w);
+        if(wc==WeaponClass.Slashing) {
             con=0;
             dex=1;
             str=0;
         } 
-        if(getWeaponClass(w)==WeaponClass.Cleaving) {
+        if(wc==WeaponClass.Cleaving) {
             con=0;
             dex=-1;
             str=1;
         } 
-        if(getWeaponClass(w)==WeaponClass.Bludgeoning) {
+        if(wc==WeaponClass.Bludgeoning) {
             con=0;
             dex=-2;
             str=1;
         } 
-        if(getWeaponClass(w)==WeaponClass.ExtRange) {
+        if(wc==WeaponClass.ExtRange) {
             con=0;
             dex=1;
             str=-2;
@@ -525,12 +526,12 @@ library LibWarrior {
     // Setters
     //////////////////////////////////////////////////////////////////////////////////////////
 
-    function setName(warrior storage w, string name) internal {
+    function setName(warrior storage w, string memory name) internal {
         require(w.bytesName==bytes32(0));
         w.bytesName = stringToBytes32(name);
     }
 
-    function setOwner(warrior storage w, address newOwner) internal {
+    function setOwner(warrior storage w, address payable newOwner) internal {
         w.owner = newOwner;
     }
 
@@ -665,14 +666,13 @@ library LibWarrior {
         return (
             w.balance >= t.teachingFee &&
             t.level > w.level &&
-            getDominantStatValue(t)>getDominantStatValue(w)
+            getDominantStatValue(t)>getDominantStatValue(w) &&
+            now >= t.trainingEnds
         );
     }
 
     function trainWith(warrior storage w, warrior storage t) internal {
         require(canTrainWith(w,t));
-        require(t.level>w.level);
-        require(getDominantStatValue(t)>getDominantStatValue(w));
         w.balance -= t.teachingFee;
         payWarriorInternal(t,t.teachingFee,true);
         w.state = warriorState.Training;
@@ -722,13 +722,14 @@ library LibWarrior {
 
     function applyDamage(warrior storage w, uint damage) internal returns (bool resultsInDeath) {
 		w.dmg += uint64(damage);
+        if(w.dmg >= getBaseHP(w)) w.dmg = uint64(getBaseHP(w));
         resultsInDeath = (getHP(w) <= 0);
     }
 
     function wearWeapon(warrior storage w) internal {
         if(w.weaponStrength>0){
             w.weaponWear++;
-            if(w.weaponWear>((maxWeapon+1)-w.weaponStrength)){
+            if(w.weaponWear>((maxWeapon+1)-w.weaponStrength)){ //Wear increases as you approach max level
                 w.weaponStrength--;
                 w.weaponWear=0;
             }
@@ -738,7 +739,7 @@ library LibWarrior {
     function wearArmor(warrior storage w) internal {
         if(w.armorStrength>0){
             w.armorWear++;
-            if(w.armorWear>((maxArmor+1)-w.armorStrength)){
+            if(w.armorWear>((maxArmor+1)-w.armorStrength)){ //Wear increases as you approach max level
                 w.armorStrength--;
                 w.armorWear=0;
             }
@@ -748,7 +749,7 @@ library LibWarrior {
     function wearShield(warrior storage w) internal {
         if(w.shieldStrength>0){
             w.shieldWear++;
-            if(w.shieldWear>((maxShield+1)-w.shieldStrength)){
+            if(w.shieldWear>((maxShield+1)-w.shieldStrength)){ //Wear increases as you approach max level
                 w.shieldStrength--;
                 w.shieldWear=0;
             }

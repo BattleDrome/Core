@@ -1,0 +1,37 @@
+.ad-view-container {
+    width:728px !important;
+    height:90px !important;
+    max-width:728px !important;
+    max-height:90px !important;
+    min-width:728px !important;
+    min-height:90px !important;
+    border: thin solid black;
+    display: block;
+    text-align: center;
+    vertical-align: center;
+}
+
+.ad-view-container img {
+
+}
+
+.ad-view-container p {
+    margin-bottom: 0.4em;
+    width: 100% !important;
+}
+
+.ad-card {
+    margin: 8px;
+    float: left;
+}
+
+.ad-card .btn {
+    position: absolute;
+    z-index: 1000;
+    top: 10px;
+    right: 10px;
+}
+
+.ad-wrapper {
+    overflow: hidden;
+}

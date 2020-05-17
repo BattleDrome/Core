@@ -1,0 +1,100 @@
+.event_spectator_modal {
+    max-width:90% !important;
+}
+
+.log_message_alert {
+    padding-top: 1px !important;
+    padding-bottom: 0px !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+    margin: 2px !important;
+    font-size: 0.8em;
+}
+
+.log_column {
+    max-height: 65vh;
+    overflow-y: auto;
+}
+
+.utility_column {
+    max-height: 65vh;
+    max-width: 360px !important;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.spectator_main_row {
+    max-height: 75vh;
+}
+
+.utility-card {
+    min-height: 0;
+    height: initial;
+    width: 310px;
+}
+
+.utility-card .card-body {
+    padding: 5px;
+}
+
+.utility-card .warrior-card-container {
+    padding: 0px;
+    margin: 0px;
+}
+
+.utility-card .warrior-card {
+    margin-bottom: 30px;
+    zoom: 80%;
+}
+
+.poll_alert {
+    font-size: 0.65em;
+    padding: 2px !important;
+    margin: 2px !important;
+}
+
+.wager_alert {
+    font-size: 0.65em;
+    padding: 2px !important;
+    margin: 2px !important;
+}
+
+.bid_alert {
+    font-size: 0.65em;
+    padding: 2px !important;
+    margin: 2px !important;
+}
+
+.bid_alert .ad-view-container {
+    zoom: 40%;
+}
+
+.bid_alert .ad-wrapper {
+    width: 100% !important;
+}
+
+.utility_badge_alert {
+    font-size: 0.65em;
+    padding: 2px !important;
+    margin: 2px !important;
+    margin-left: 5px !important;
+}
+
+.utility-card .event-attribute {
+    clear: both;
+    font-size: 0.75em;
+}
+
+.utility-card .event-attribute-label {
+    float: left;
+}
+
+.utility-card .event-attribute-value {
+    float: right;
+}
+
+.utility-card .event-attribute-divider {
+    clear: both;
+    margin-top: 0px;
+    margin-bottom: 0px;
+}

@@ -1,0 +1,13 @@
+.warrior-image {
+    width: 240px;
+    height: 350px;
+    /*
+    background-image: url('/images/w_m.png');
+    background-size: cover;
+    */
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: -20px;
+    margin-bottom: -40px;
+  }
+  

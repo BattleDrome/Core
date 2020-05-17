@@ -1,0 +1,12 @@
+.event_container {
+    margin:10px;
+    padding:2px;
+    border:thick solid black;
+}
+
+.events_outer_container .btn {
+    position: absolute;
+    z-index: 1000;
+    top: 50px;
+    right: 25px;
+}

@@ -1,0 +1,150 @@
+.event-card-container {
+    perspective: 2000px;
+    margin: 8px;
+}
+
+.event-card {
+    width: 280px;
+    height: 450px;
+    margin: 8px;
+    float: left;
+    -webkit-transition: -webkit-transform 1s;
+    -moz-transition: -moz-transform 1s;
+    -o-transition: -o-transform 1s;
+    transition: transform 1s;
+    -webkit-transform-style: preserve-3d;
+    -moz-transform-style: preserve-3d;
+    -o-transform-style: preserve-3d;
+    transform-style: preserve-3d;
+    -webkit-transform-origin: 50% 50%;
+}
+
+.event-card .front, .back {
+    width: 280px;
+    height: 450px;
+    color: white;
+    text-align: center;
+    position: absolute;
+    -webkit-backface-visibility: hidden;
+    -moz-backface-visibility: hidden;
+    -o-backface-visibility: hidden;
+    backface-visibility: hidden;
+    overflow: hidden;
+}
+
+.event-card .back {
+    -webkit-transform: rotateY( 180deg);
+    -moz-transform: rotateY( 180deg);
+    -o-transform: rotateY( 180deg);
+    transform: rotateY( 180deg);
+}
+
+.event-card.flipped {
+    -webkit-transform: rotateY( 180deg);
+    -moz-transform: rotateY( 180deg);
+    -o-transform: rotateY( 180deg);
+    transform: rotateY( 180deg);
+}
+
+.event-card .card-header {
+    text-align: center;
+    height: 50px
+}
+
+.event-card .card-body {
+    text-align: center;
+    min-height: 340px;
+    max-height: 340px;
+}
+
+.event-card .card-footer {
+    text-align: center;
+    height: 60px;
+}
+
+.flip-icon {
+    height: 20px;
+    width: 20px;
+    float: right;
+}
+
+.event-card .nav {
+    background-color: transparent;
+    padding-top: 0px;
+    padding-left: 0px;
+    padding-right: 0px;
+    font-size: 12px;
+}
+
+.event-card .nav-link {
+    padding: 0.1rem 0.25rem;
+}
+
+.event-card .event-attribute {
+    clear: both;
+    font-size: 0.9em;
+}
+
+.event-card .event-attribute-label {
+    float: left;
+}
+
+.event-card .event-attribute-value {
+    float: right;
+}
+
+.event-card .event-attribute-divider {
+    clear: both;
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+
+.event-card .event-action-row {
+    clear: both;
+}
+
+.event-card .event-action-row .btn {
+    margin: 3px;
+    padding: 2px 5px 2px 5px;
+    font-size: 0.8em;
+}
+
+.event-card .btn {
+    position: initial;
+}
+
+.event-card .badge-status {
+    font-size: 0.75em;
+    float:left;
+}
+
+.event-card .badge-fee {
+    font-size: 0.65em;
+}
+
+.event-card .badge-owner {
+    font-size: 0.6em;
+}
+
+.event-card .badge-canstart {
+    font-size: 0.55em;
+}
+
+.warrior-join-button {
+    margin: 3px;
+    padding: 2px;
+    font-size: 1em;
+}
+
+.join-error {
+    font-size: 0.75em;
+    margin: 2px !important;
+    padding: 5px !important;
+}
+
+.maximize-icon {
+    height: 18px;
+    width: 18px;
+    float: right;
+    content:url("/images/maximize.png");
+}
